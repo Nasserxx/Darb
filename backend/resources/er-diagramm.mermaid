@@ -1,0 +1,268 @@
+erDiagram
+
+
+  %% ─────────────── CORE TABLES ───────────────
+
+  users {
+    uuid id PK
+    varchar full_name
+    varchar email UK
+    varchar phone UK
+    varchar password_hash
+    user_role role
+    gender gender
+    date date_of_birth
+    text avatar_url
+    boolean is_active
+    timestamp last_login
+    timestamp created_at
+    timestamp updated_at
+  }
+
+  mosques {
+    uuid id PK
+    varchar name
+    text address
+    varchar city
+    varchar phone
+    varchar email
+    text logo_url
+    varchar timezone
+    jsonb settings
+    boolean is_active
+    timestamp created_at
+  }
+
+  mosque_admins {
+    uuid id PK
+    uuid user_id FK
+    uuid mosque_id FK
+    admin_permission permission
+    boolean is_primary_admin
+    timestamp assigned_at
+    uuid assigned_by FK
+  }
+
+  teachers {
+    uuid id PK
+    uuid user_id FK
+    uuid mosque_id FK
+    varchar specialization
+    text bio
+    integer years_experience
+    varchar ijazah_chain
+    boolean is_available
+    boolean is_active
+    timestamp joined_at
+  }
+
+  students {
+    uuid id PK
+    uuid user_id FK
+    uuid mosque_id FK
+    varchar national_id
+    text medical_notes
+    integer memorized_juz
+    integer total_absences
+    integer total_late_arrivals
+    enrollment_status status
+    timestamp enrolled_at
+  }
+
+  parent_student {
+    uuid id PK
+    uuid parent_user_id FK
+    uuid student_id FK
+    varchar relationship
+    boolean is_primary
+    boolean receives_notifications
+  }
+
+  circles {
+    uuid id PK
+    uuid mosque_id FK
+    uuid teacher_id FK
+    varchar name
+    circle_level level
+    circle_type type
+    circle_status status
+    integer capacity
+    time start_time
+    time end_time
+    varchar days_of_week
+    text room_or_link
+    integer late_threshold_minutes "minutes before marked late"
+    decimal monthly_fee
+    timestamp created_at
+  }
+
+  enrollments {
+    uuid id PK
+    uuid student_id FK
+    uuid circle_id FK
+    enrollment_status status
+    date enrolled_date
+    date withdrawn_date
+    uuid approved_by FK
+    text notes
+  }
+
+  attendance {
+    uuid id PK
+    uuid enrollment_id FK
+    uuid circle_id FK
+    date session_date
+    attendance_status status
+    time scheduled_start
+    time actual_check_in
+    integer minutes_late "0 if present on time"
+    boolean parent_notified
+    absence_reason absence_reason
+    text excuse_document_url
+    uuid recorded_by FK
+    timestamp created_at
+  }
+
+  memorization_progress {
+    uuid id PK
+    uuid student_id FK
+    uuid circle_id FK
+    uuid teacher_id FK
+    smallint surah_number
+    smallint ayah_from
+    smallint ayah_to
+    recitation_grade grade
+    integer tajweed_score "0-100"
+    text teacher_notes
+    text audio_url
+    date session_date
+    timestamp created_at
+  }
+
+  goals {
+    uuid id PK
+    uuid student_id FK
+    uuid circle_id FK
+    varchar title
+    smallint target_surah
+    smallint target_juz
+    goal_status status
+    date due_date
+    date completed_date
+    uuid set_by FK
+    timestamp created_at
+  }
+
+  payments {
+    uuid id PK
+    uuid student_id FK
+    uuid circle_id FK
+    uuid mosque_id FK
+    decimal amount
+    decimal discount
+    decimal amount_paid
+    payment_status status
+    payment_method method
+    date due_date
+    date paid_date
+    text receipt_url
+    uuid recorded_by FK
+    text notes
+    timestamp created_at
+  }
+
+  notifications {
+    uuid id PK
+    uuid mosque_id FK
+    uuid recipient_user_id FK
+    uuid sender_user_id FK
+    varchar title
+    text body
+    notification_channel channel
+    notification_status status
+    timestamp sent_at
+    timestamp delivered_at
+    jsonb metadata
+  }
+
+  messages {
+    uuid id PK
+    uuid sender_id FK
+    uuid receiver_id FK
+    uuid circle_id FK
+    text content
+    message_status status
+    timestamp sent_at
+    timestamp read_at
+  }
+
+  achievements {
+    uuid id PK
+    uuid student_id FK
+    uuid mosque_id FK
+    achievement_type type
+    varchar title
+    text description
+    text badge_url
+    uuid awarded_by FK
+    date awarded_date
+    timestamp created_at
+  }
+
+  reports {
+    uuid id PK
+    uuid mosque_id FK
+    uuid generated_by FK
+    report_type type
+    varchar title
+    jsonb filters
+    text file_url
+    timestamp generated_at
+  }
+
+  %% ─────────────── RELATIONSHIPS ───────────────
+
+  users ||--o{ mosque_admins : "administers"
+  users ||--o{ teachers : "has profile"
+  users ||--o{ students : "has profile"
+  users ||--o{ parent_student : "is parent"
+  users ||--o{ notifications : "receives"
+  users ||--o{ notifications : "sends"
+  users ||--o{ messages : "sends"
+  users ||--o{ messages : "receives"
+  users ||--o{ reports : "generates"
+  users ||--o{ attendance : "records"
+  users ||--o{ mosque_admins : "assigned by"
+  users ||--o{ enrollments : "approves"
+  users ||--o{ goals : "sets"
+  users ||--o{ payments : "records"
+  users ||--o{ achievements : "awards"
+
+  mosques ||--o{ mosque_admins : "has admins"
+  mosques ||--o{ teachers : "employs"
+  mosques ||--o{ students : "enrolls"
+  mosques ||--o{ circles : "hosts"
+  mosques ||--o{ payments : "receives"
+  mosques ||--o{ notifications : "sends"
+  mosques ||--o{ achievements : "awards"
+  mosques ||--o{ reports : "generates"
+
+  teachers ||--o{ circles : "leads"
+  teachers ||--o{ memorization_progress : "records"
+
+  circles ||--o{ enrollments : "contains"
+  circles ||--o{ attendance : "tracks"
+  circles ||--o{ memorization_progress : "logs"
+  circles ||--o{ goals : "sets"
+  circles ||--o{ messages : "threads"
+  circles ||--o{ payments : "billed via"
+
+  students ||--o{ enrollments : "has"
+  students ||--o{ memorization_progress : "makes"
+  students ||--o{ goals : "pursues"
+  students ||--o{ payments : "owes"
+  students ||--o{ achievements : "earns"
+  students ||--o{ parent_student : "linked to"
+
+  enrollments ||--o{ attendance : "generates"
+  parent_student }o--|| students : "monitors"
