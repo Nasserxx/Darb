@@ -1,17 +1,31 @@
-# Compiled class file
+# --- OS & editors ---
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
+*.iml
+
+# --- Local secrets (keep .env.example tracked) ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Cursor ---
+.cursor/
+
+# --- Java / JVM (repo-wide; prefer backend/target/ for build output) ---
 *.class
+hs_err_pid*
+replay_pid*
 
-# Log file
+# Logs anywhere in the repo
 *.log
+logs/
 
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
+# Archives (build artifacts; do not use blanket *.jar — it hides Maven Wrapper jars)
 *.war
 *.nar
 *.ear
@@ -19,6 +33,9 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# Legacy / tooling
+*.ctxt
+.mtj.tmp/
+
+# Maven / Spring build outputs (monorepo)
+**/target/

@@ -1,0 +1,17 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "java",
+			"name": "Debug Darb (Spring Boot)",
+			"request": "launch",
+			"cwd": "${workspaceFolder}/backend",
+			"mainClass": "com.darb.DarbApplication",
+			"projectName": "darb-backend",
+			"envFile": "${workspaceFolder}/.env",
+			"env": {
+				"SPRING_PROFILES_ACTIVE": "dev"
+			}
+		}
+	]
+}
