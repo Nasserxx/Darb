@@ -163,6 +163,7 @@ erDiagram
     decimal amount_paid
     payment_status status
     payment_method method
+    payment_cycle cycle
     date due_date
     date paid_date
     text receipt_url
@@ -222,17 +223,14 @@ erDiagram
 
   %% ─────────────── RELATIONSHIPS ───────────────
 
-  users ||--o{ mosque_admins : "administers"
+  users ||--o{ mosque_admins : "administers (assigned_by)"
   users ||--o{ teachers : "has profile"
   users ||--o{ students : "has profile"
   users ||--o{ parent_student : "is parent"
-  users ||--o{ notifications : "receives"
-  users ||--o{ notifications : "sends"
-  users ||--o{ messages : "sends"
-  users ||--o{ messages : "receives"
+  users ||--o{ notifications : "recipient / sender"
+  users ||--o{ messages : "sender / receiver"
   users ||--o{ reports : "generates"
   users ||--o{ attendance : "records"
-  users ||--o{ mosque_admins : "assigned by"
   users ||--o{ enrollments : "approves"
   users ||--o{ goals : "sets"
   users ||--o{ payments : "records"
@@ -265,4 +263,3 @@ erDiagram
   students ||--o{ parent_student : "linked to"
 
   enrollments ||--o{ attendance : "generates"
-  parent_student }o--|| students : "monitors"

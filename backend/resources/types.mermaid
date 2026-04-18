@@ -1,0 +1,150 @@
+
+erDiagram
+
+  %% ─────────────── ENUMS (all values shown) ───────────────
+
+  ENUM_user_role {
+    string super_admin "full system access"
+    string mosque_admin "manages one mosque"
+    string teacher "leads circles"
+    string parent "views child data"
+    string student "learner"
+  }
+
+  ENUM_gender {
+    string male
+    string female
+  }
+
+  ENUM_admin_permission {
+    string full "all mosque data"
+    string financial "payments only"
+    string academic "circles and students"
+    string readonly "view only"
+  }
+
+  ENUM_circle_type {
+    string in_person
+    string online
+    string hybrid
+  }
+
+  ENUM_circle_level {
+    string beginner
+    string intermediate
+    string advanced
+    string tajweed_only
+    string revision
+  }
+
+  ENUM_circle_status {
+    string active
+    string suspended
+    string closed
+  }
+
+  ENUM_enrollment_status {
+    string pending "awaiting approval"
+    string active "currently enrolled"
+    string on_hold "temporarily paused"
+    string graduated "completed curriculum"
+    string withdrawn "left voluntarily"
+    string expelled "removed by admin"
+  }
+
+  ENUM_attendance_status {
+    string present
+    string absent
+    string late "minutes_late recorded"
+    string excused "with valid reason"
+    string early_leave "left before end"
+  }
+
+  ENUM_absence_reason {
+    string illness
+    string travel
+    string family_emergency
+    string exam
+    string weather
+    string no_reason
+    string other
+  }
+
+  ENUM_recitation_grade {
+    string excellent "95-100"
+    string good "80-94"
+    string fair "65-79"
+    string needs_work "below 65"
+  }
+
+  ENUM_payment_status {
+    string pending
+    string paid
+    string overdue
+    string waived "social exemption"
+    string partial
+  }
+
+  ENUM_payment_method {
+    string cash
+    string bank_transfer
+    string online_gateway
+    string waiver
+  }
+
+  ENUM_notification_channel {
+    string sms
+    string whatsapp
+    string push_app
+    string email
+  }
+
+  ENUM_notification_status {
+    string queued
+    string sent
+    string delivered
+    string failed
+    string read
+  }
+
+  ENUM_message_status {
+    string unread
+    string read
+    string archived
+  }
+
+  ENUM_achievement_type {
+    string juz_complete
+    string surah_complete
+    string full_quran
+    string attendance_streak
+    string zero_absence_month
+    string top_student
+    string custom
+  }
+
+  ENUM_report_type {
+    string student_progress
+    string attendance_summary
+    string lateness_report
+    string financial
+    string teacher_performance
+    string circle_summary
+    string parent_engagement
+  }
+
+  ENUM_goal_status {
+    string not_started
+    string in_progress
+    string completed
+    string overdue
+    string cancelled
+  }
+
+  ENUM_payment_cycle {
+    string quarterly
+    string monthly
+    string half_yearly
+    string yearly
+    string one_time
+  }
