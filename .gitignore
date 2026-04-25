@@ -39,3 +39,5 @@ logs/
 
 # Maven / Spring build outputs (monorepo)
 **/target/
+graphify-out/
+.venv/
