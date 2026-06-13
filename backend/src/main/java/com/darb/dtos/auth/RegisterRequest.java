@@ -19,10 +19,11 @@ public class RegisterRequest {
     @Schema(description = "Full name", example = "Ahmed Al-Rashid", requiredMode = Schema.RequiredMode.REQUIRED)
     private String fullName;
 
-    @NotBlank @Email
+    @NotBlank @Email @Size(max = 255)
     @Schema(description = "Email address", example = "ahmed@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
+    @Size(max = 30)
     @Schema(description = "Phone number", example = "+966501234567")
     private String phone;
 
@@ -30,7 +31,7 @@ public class RegisterRequest {
     @Schema(description = "Password (min 8 characters)", example = "P@ssw0rd123!", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 
-    @Schema(description = "User role", example = "STUDENT")
+    @Schema(description = "User role (student, teacher, parent, or mosque_admin; defaults to student)", example = "teacher")
     private UserRole role;
 
     @Schema(description = "Gender", example = "MALE")

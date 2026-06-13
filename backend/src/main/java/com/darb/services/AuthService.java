@@ -2,6 +2,7 @@ package com.darb.services;
 
 import com.darb.dtos.auth.*;
 import com.darb.entities.User;
+import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.DuplicateResourceException;
 import com.darb.exceptions.UnauthorizedException;
@@ -25,25 +26,42 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    private static final java.util.Set<UserRole> SELF_REGISTRATION_ROLES =
+            java.util.Set.of(UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.MOSQUE_ADMIN);
+
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public void register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new DuplicateResourceException("User", "email", request.getEmail());
         }
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && userRepository.existsByPhone(request.getPhone())) {
+            throw new DuplicateResourceException("User", "phone", request.getPhone());
+        }
+
+        UserRole role = resolveRegistrationRole(request.getRole());
 
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(com.darb.entities.enums.UserRole.STUDENT)
+                .role(role)
                 .gender(request.getGender())
                 .dateOfBirth(request.getDateOfBirth())
                 .isActive(true)
                 .build();
 
-        user = userRepository.save(user);
-        return generateAuthResponse(user);
+        userRepository.save(user);
+    }
+
+    private UserRole resolveRegistrationRole(UserRole requested) {
+        UserRole role = requested != null ? requested : UserRole.STUDENT;
+        if (!SELF_REGISTRATION_ROLES.contains(role)) {
+            throw new BadRequestException(
+                    "Role not allowed for self-registration. Allowed roles: student, teacher, parent, mosque_admin");
+        }
+        return role;
     }
 
     @Transactional

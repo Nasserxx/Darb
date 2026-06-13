@@ -32,21 +32,18 @@ public class AuthController {
     @Operation(
             summary = "Register a new user",
             description = "Creates a new user account with the provided details. "
-                    + "Public self-registration always provisions a STUDENT role."
+                    + "Returns HTTP 201 with no response body. Use POST /login to obtain tokens. "
+                    + "Self-registration allows student, teacher, parent, or mosque_admin roles (defaults to student). "
+                    + "Mosque assignment is created separately via POST /api/v1/mosque-admins."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "User registered successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error", content = @Content),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email already exists", content = @Content)
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email or phone already exists", content = @Content)
     })
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        var response = authService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<AuthResponse>builder()
-                        .success(true)
-                        .message("Registration successful")
-                        .data(response)
-                        .build());
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PostMapping("/login")

@@ -41,3 +41,4 @@ logs/
 **/target/
 graphify-out/
 .venv/
+.graphify_*

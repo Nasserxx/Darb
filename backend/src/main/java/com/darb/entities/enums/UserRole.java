@@ -1,5 +1,6 @@
 package com.darb.entities.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -17,4 +18,17 @@ public enum UserRole {
 
     private final String key;
     private final String description;
+
+    @JsonCreator
+    public static UserRole fromValue(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        for (UserRole role : values()) {
+            if (role.name().equalsIgnoreCase(value) || role.key.equalsIgnoreCase(value)) {
+                return role;
+            }
+        }
+        throw new IllegalArgumentException("Invalid role: " + value);
+    }
 }
