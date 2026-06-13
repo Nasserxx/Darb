@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "Darb",
+    "goToHome": "Go to home",
     "tagline": "Quran learning circles platform",
     "loading": "Loading…",
     "submit": "Submit",
@@ -51,6 +52,8 @@
       "password": "Password",
       "passwordPlaceholder": "At least 8 characters",
       "passwordHint": "Minimum 8 characters.",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter your password",
       "role": "Role",
       "rolePlaceholder": "Select your role",
       "gender": "Gender",
@@ -159,6 +162,7 @@
         "role": "Role",
         "gender": "Gender",
         "dateOfBirth": "Date of birth",
+        "confirmPassword": "Confirm password",
         "currentPassword": "Current password",
         "newPassword": "New password"
       }

@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "Darb",
+    "goToHome": "Zur Startseite",
     "tagline": "Plattform für Koran-Lernkreise",
     "loading": "Wird geladen…",
     "submit": "Absenden",
@@ -51,6 +52,8 @@
       "password": "Passwort",
       "passwordPlaceholder": "Mindestens 8 Zeichen",
       "passwordHint": "Mindestens 8 Zeichen.",
+      "confirmPassword": "Passwort bestätigen",
+      "confirmPasswordPlaceholder": "Passwort erneut eingeben",
       "role": "Rolle",
       "rolePlaceholder": "Rolle auswählen",
       "gender": "Geschlecht",
@@ -159,6 +162,7 @@
         "role": "Rolle",
         "gender": "Geschlecht",
         "dateOfBirth": "Geburtsdatum",
+        "confirmPassword": "Passwort bestätigen",
         "currentPassword": "Aktuelles Passwort",
         "newPassword": "Neues Passwort"
       }

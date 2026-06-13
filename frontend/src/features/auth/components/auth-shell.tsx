@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AppLogoLink } from "@/components/app-logo-link.tsx";
 import { LocaleSwitcher } from "@/components/locale-switcher.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -33,10 +34,8 @@ export function AuthShell({
         aria-hidden={false}
       >
         <div className="flex items-start justify-between gap-4">
-          <span className="font-serif text-3xl font-semibold tracking-tight">
-            {t("appName")}
-          </span>
-          <LocaleSwitcher />
+          <AppLogoLink variant="onPrimary" size="lg" />
+          <LocaleSwitcher variant="onPrimary" />
         </div>
 
         <div className="flex max-w-md flex-col gap-4">
@@ -59,9 +58,7 @@ export function AuthShell({
 
       <div className="flex flex-col">
         <header className="flex items-center justify-between gap-4 border-b border-border bg-background/80 px-6 py-4 backdrop-blur-sm lg:hidden">
-          <span className="font-serif text-2xl font-semibold text-foreground">
-            {t("appName")}
-          </span>
+          <AppLogoLink size="md" />
           <LocaleSwitcher />
         </header>
 

@@ -67,6 +67,7 @@ export function RegisterForm() {
       email: "",
       phone: "",
       password: "",
+      confirmPassword: "",
       role: "student",
       gender: undefined,
       dateOfBirth: "",
@@ -202,6 +203,40 @@ export function RegisterForm() {
             ) : (
               <FieldDescription>{t("register.passwordHint")}</FieldDescription>
             )}
+          </Field>
+
+          <Field data-invalid={!!errors.confirmPassword}>
+            <FieldLabel htmlFor="register-confirmPassword">
+              {t("register.confirmPassword")}
+            </FieldLabel>
+            <div className="relative">
+              <Input
+                id="register-confirmPassword"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder={t("register.confirmPasswordPlaceholder")}
+                className="pe-10"
+                aria-invalid={!!errors.confirmPassword}
+                {...register("confirmPassword")}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute end-0 top-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={
+                  showPassword ? t("common:hidePassword") : t("common:showPassword")
+                }
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </Button>
+            </div>
+            {errors.confirmPassword ? (
+              <FieldDescription className="text-destructive">
+                {errors.confirmPassword.message}
+              </FieldDescription>
+            ) : null}
           </Field>
 
           <Field data-invalid={!!errors.role}>

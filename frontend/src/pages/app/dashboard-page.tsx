@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { AppLogoLink } from "@/components/app-logo-link.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { LocaleSwitcher } from "@/components/locale-switcher.tsx";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
@@ -21,9 +22,7 @@ export function DashboardPage() {
   return (
     <div className="min-h-svh bg-background">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <span className="font-serif text-xl font-semibold text-primary">
-          {t("common:appName")}
-        </span>
+        <AppLogoLink size="sm" />
         <div className="flex items-center gap-3">
           <LocaleSwitcher />
           <Button variant="outline" size="sm" onClick={handleLogout}>
