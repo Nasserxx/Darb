@@ -1,6 +1,16 @@
 # Darb
 ## the idea of the project
 
+## Frontend
+
+The SPA lives under `frontend/` (React, Vite, TypeScript). Auth flows (register, login, JWT session, change password) use locale-prefixed routes and i18n (`en`, `ar`, `de`).
+
+- **Setup and dev server:** [frontend/README.md](frontend/README.md) — `npm install`, `npm run dev` (http://localhost:3000), `VITE_API_URL`
+- **Architecture:** [frontend/docs/IMPLEMENTATION.md](frontend/docs/IMPLEMENTATION.md)
+- **Adding features/routes:** [frontend/docs/EXTENDING.md](frontend/docs/EXTENDING.md)
+
+Run the backend on port 8080 and set `CORS_ALLOWED_ORIGINS` to include the frontend origin (see repo `.env.example`).
+
 ## Backend toolchain
 
 The backend lives under `backend/`. **Do not change Java or Spring Boot versions ad hoc**; align with the table below and keep them in one place (the parent POM and `java.version`).

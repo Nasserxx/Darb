@@ -1,11 +1,14 @@
 package com.darb.exceptions;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -87,15 +90,66 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            String key = error instanceof FieldError fieldError
+                    ? fieldError.getField()
+                    : error.getObjectName();
+            errors.put(key, error.getDefaultMessage());
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Map<String, String>>builder()
                         .success(false)
                         .message("Validation failed")
                         .data(errors)
+                        .build());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        String message = "Invalid request body";
+        Throwable cause = ex.getCause();
+        if (cause instanceof IllegalArgumentException illegalArgumentException) {
+            message = illegalArgumentException.getMessage();
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message(message)
+                        .build());
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message("Unsupported Content-Type. Use application/json")
+                        .build());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String details = ex.getMostSpecificCause().getMessage();
+        if (details != null) {
+            String lower = details.toLowerCase();
+            if (lower.contains("email")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.<Void>builder()
+                                .success(false)
+                                .message("User with this email already exists")
+                                .build());
+            }
+            if (lower.contains("phone")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.<Void>builder()
+                                .success(false)
+                                .message("User with this phone already exists")
+                                .build());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Void>builder()
+                        .success(false)
+                        .message("Invalid request data")
                         .build());
     }
 
