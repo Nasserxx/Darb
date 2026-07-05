@@ -18,6 +18,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -42,8 +43,9 @@ public class CircleController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<CircleResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<CircleResponse> page = circleService.findAll(pageable);
+        Page<CircleResponse> page = circleService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<CircleResponse>>builder()
                 .success(true)
                 .message("Circles retrieved successfully")
@@ -71,11 +73,12 @@ public class CircleController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CircleResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Circle UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<CircleResponse>builder()
                 .success(true)
                 .message("Circle retrieved successfully")
-                .data(circleService.findById(id))
+                .data(circleService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 
@@ -92,12 +95,13 @@ public class CircleController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<CircleResponse>> create(
+            Authentication authentication,
             @Valid @RequestBody CircleCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<CircleResponse>builder()
                         .success(true)
                         .message("Circle created successfully")
-                        .data(circleService.create(request))
+                        .data(circleService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 
@@ -115,12 +119,13 @@ public class CircleController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<CircleResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Circle UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody CircleUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<CircleResponse>builder()
                 .success(true)
                 .message("Circle updated successfully")
-                .data(circleService.update(id, request))
+                .data(circleService.update((UUID) authentication.getPrincipal(), id, request))
                 .build());
     }
 
@@ -138,8 +143,9 @@ public class CircleController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
+            Authentication authentication,
             @Parameter(description = "Circle UUID", required = true) @PathVariable UUID id) {
-        circleService.delete(id);
+        circleService.delete((UUID) authentication.getPrincipal(), id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Circle deactivated successfully")

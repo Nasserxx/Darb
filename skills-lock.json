@@ -7,6 +7,12 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
     },
+    "improve": {
+      "source": "shadcn/improve",
+      "sourceType": "github",
+      "skillPath": "skills/improve/SKILL.md",
+      "computedHash": "553713a1b9af40ec50c4018f75b8974bf728fe5abc8e125b748e2d718d5c31ea"
+    },
     "performance": {
       "source": "addyosmani/web-quality-skills",
       "sourceType": "github",

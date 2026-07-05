@@ -5,7 +5,9 @@ import com.darb.dtos.common.PageResponse;
 import com.darb.dtos.mosqueadmin.MosqueAdminCreateRequest;
 import com.darb.dtos.mosqueadmin.MosqueAdminResponse;
 import com.darb.dtos.mosqueadmin.MosqueAdminUpdateRequest;
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.services.MosqueAdminService;
+import com.darb.services.MosqueMemberJoinRequestService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,6 +23,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,6 +33,45 @@ import java.util.UUID;
 public class MosqueAdminController {
 
     private final MosqueAdminService mosqueAdminService;
+    private final MosqueMemberJoinRequestService joinRequestService;
+
+    @GetMapping("/join-requests")
+    @PreAuthorize("hasRole('MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<List<MemberJoinRequestResponse>>> listJoinRequests(
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<List<MemberJoinRequestResponse>>builder()
+                .success(true)
+                .message("Join requests retrieved successfully")
+                .data(joinRequestService.listPendingForAdmin(userId))
+                .build());
+    }
+
+    @PostMapping("/join-requests/{id}/approve")
+    @PreAuthorize("hasRole('MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> approveJoinRequest(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
+                .success(true)
+                .message("Join request approved")
+                .data(joinRequestService.approve(userId, id))
+                .build());
+    }
+
+    @PostMapping("/join-requests/{id}/reject")
+    @PreAuthorize("hasRole('MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> rejectJoinRequest(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
+                .success(true)
+                .message("Join request rejected")
+                .data(joinRequestService.reject(userId, id))
+                .build());
+    }
 
     @GetMapping
     @Operation(
@@ -44,8 +86,9 @@ public class MosqueAdminController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<MosqueAdminResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<MosqueAdminResponse> page = mosqueAdminService.findAll(pageable);
+        Page<MosqueAdminResponse> page = mosqueAdminService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<MosqueAdminResponse>>builder()
                 .success(true)
                 .message("Mosque admins retrieved successfully")
@@ -74,11 +117,12 @@ public class MosqueAdminController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<MosqueAdminResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Mosque admin assignment UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<MosqueAdminResponse>builder()
                 .success(true)
                 .message("Mosque admin retrieved successfully")
-                .data(mosqueAdminService.findById(id))
+                .data(mosqueAdminService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 

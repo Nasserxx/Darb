@@ -1,6 +1,8 @@
 package com.darb.controllers.v1;
 
 import com.darb.dtos.common.ApiResponse;
+import com.darb.dtos.common.InviteCodeJoinRequest;
+import com.darb.dtos.common.MosqueIdRequest;
 import com.darb.dtos.common.PageResponse;
 import com.darb.dtos.teacher.TeacherCreateRequest;
 import com.darb.dtos.teacher.TeacherResponse;
@@ -18,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -42,8 +45,9 @@ public class TeacherController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<TeacherResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<TeacherResponse> page = teacherService.findAll(pageable);
+        Page<TeacherResponse> page = teacherService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<TeacherResponse>>builder()
                 .success(true)
                 .message("Teachers retrieved successfully")
@@ -71,12 +75,52 @@ public class TeacherController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TeacherResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Teacher UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<TeacherResponse>builder()
                 .success(true)
                 .message("Teacher retrieved successfully")
-                .data(teacherService.findById(id))
+                .data(teacherService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
+    }
+
+    @PostMapping("/join")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ApiResponse<TeacherResponse>> join(
+            Authentication authentication,
+            @Valid @RequestBody InviteCodeJoinRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<TeacherResponse>builder()
+                        .success(true)
+                        .message("Joined mosque successfully")
+                        .data(teacherService.joinByInviteCode(userId, request.getInviteCode()))
+                        .build());
+    }
+
+    @PostMapping("/onboard")
+    @Operation(
+            summary = "Self-onboard as a teacher",
+            description = "Links the authenticated teacher user to a mosque. Rejects if a profile already exists."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Teacher onboarded successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request body or validation errors"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Wrong role or profile already exists"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Mosque not found")
+    })
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ApiResponse<TeacherResponse>> onboard(
+            Authentication authentication,
+            @Valid @RequestBody MosqueIdRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<TeacherResponse>builder()
+                        .success(true)
+                        .message("Teacher onboarded successfully")
+                        .data(teacherService.onboard(userId, request.getMosqueId()))
+                        .build());
     }
 
     @PostMapping
@@ -92,12 +136,13 @@ public class TeacherController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> create(
+            Authentication authentication,
             @Valid @RequestBody TeacherCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<TeacherResponse>builder()
                         .success(true)
                         .message("Teacher created successfully")
-                        .data(teacherService.create(request))
+                        .data(teacherService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 
@@ -115,12 +160,13 @@ public class TeacherController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Teacher UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody TeacherUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<TeacherResponse>builder()
                 .success(true)
                 .message("Teacher updated successfully")
-                .data(teacherService.update(id, request))
+                .data(teacherService.update((UUID) authentication.getPrincipal(), id, request))
                 .build());
     }
 
@@ -138,8 +184,9 @@ public class TeacherController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
+            Authentication authentication,
             @Parameter(description = "Teacher UUID", required = true) @PathVariable UUID id) {
-        teacherService.delete(id);
+        teacherService.delete((UUID) authentication.getPrincipal(), id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Teacher deactivated successfully")

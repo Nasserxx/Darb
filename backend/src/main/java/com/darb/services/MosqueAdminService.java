@@ -10,6 +10,7 @@ import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.MosqueAdminRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,15 +29,23 @@ public class MosqueAdminService {
     private final MosqueAdminRepository mosqueAdminRepository;
     private final UserRepository userRepository;
     private final MosqueRepository mosqueRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
-    public Page<MosqueAdminResponse> findAll(Pageable pageable) {
-        return mosqueAdminRepository.findAll(pageable).map(this::toResponse);
+    public Page<MosqueAdminResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId,
+                pageable,
+                mosqueId -> mosqueAdminRepository.findByMosqueId(mosqueId, pageable),
+                mosqueAdminRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public MosqueAdminResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public MosqueAdminResponse findById(UUID callerId, UUID id) {
+        MosqueAdmin mosqueAdmin = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, mosqueAdmin.getMosque().getId());
+        return toResponse(mosqueAdmin);
     }
 
     @Transactional

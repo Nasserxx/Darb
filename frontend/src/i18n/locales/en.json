@@ -86,7 +86,8 @@
       "student": "Student",
       "teacher": "Teacher",
       "parent": "Parent",
-      "mosque_admin": "Mosque administrator"
+      "mosque_admin": "Mosque administrator",
+      "super_admin": "Super administrator"
     },
     "genders": {
       "male": "Male",

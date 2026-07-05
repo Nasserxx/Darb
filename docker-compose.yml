@@ -25,7 +25,8 @@ services:
       DB_NAME: ${DB_NAME:-darb}
       DB_USER: ${DB_USER:-darb}
       DB_PASSWORD: ${DB_PASSWORD:-darb}
-      JWT_SECRET: ${JWT_SECRET:-changeThisToASecretKeyWithAtLeast256BitsForHS256Algorithm}
+      # Required — copy from .env.example
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "${APP_PORT:-8080}:8080"
     depends_on:

@@ -11,6 +11,7 @@ import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.TeacherRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,21 +29,30 @@ public class CircleService {
     private final CircleRepository circleRepository;
     private final MosqueRepository mosqueRepository;
     private final TeacherRepository teacherRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
-    public Page<CircleResponse> findAll(Pageable pageable) {
-        return circleRepository.findAll(pageable).map(this::toResponse);
+    public Page<CircleResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId,
+                pageable,
+                mosqueId -> circleRepository.findByMosqueId(mosqueId, pageable),
+                circleRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public CircleResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public CircleResponse findById(UUID callerId, UUID id) {
+        Circle circle = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
+        return toResponse(circle);
     }
 
     @Transactional
-    public CircleResponse create(CircleCreateRequest request) {
+    public CircleResponse create(UUID callerId, CircleCreateRequest request) {
         Mosque mosque = mosqueRepository.findById(request.getMosqueId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
+        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
         Teacher teacher = teacherRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", request.getTeacherId()));
 
@@ -66,8 +76,9 @@ public class CircleService {
     }
 
     @Transactional
-    public CircleResponse update(UUID id, CircleUpdateRequest request) {
+    public CircleResponse update(UUID callerId, UUID id, CircleUpdateRequest request) {
         Circle circle = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
 
         if (request.getName() != null) {
             circle.setName(request.getName());
@@ -107,8 +118,9 @@ public class CircleService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
         Circle circle = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
         circle.setStatus(CircleStatus.ENDED);
         circleRepository.save(circle);
     }
