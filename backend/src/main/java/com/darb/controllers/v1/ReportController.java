@@ -44,11 +44,12 @@ public class ReportController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<ReportResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Report UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<ReportResponse>builder()
                 .success(true)
                 .message("Report retrieved successfully")
-                .data(reportService.findById(id))
+                .data(reportService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 

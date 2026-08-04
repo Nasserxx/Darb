@@ -14,4 +14,7 @@ public class MosqueAdminUpdateRequest {
 
     @Schema(description = "Whether this is the primary admin")
     private Boolean isPrimaryAdmin;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

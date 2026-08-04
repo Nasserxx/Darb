@@ -1,6 +1,8 @@
 package com.darb.controllers.v1;
 
 import com.darb.dtos.common.ApiResponse;
+import com.darb.dtos.common.InviteCodeJoinRequest;
+import com.darb.dtos.common.MosqueIdRequest;
 import com.darb.dtos.common.PageResponse;
 import com.darb.dtos.student.StudentCreateRequest;
 import com.darb.dtos.student.StudentResponse;
@@ -18,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -43,8 +46,9 @@ public class StudentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<PageResponse<StudentResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<StudentResponse> page = studentService.findAll(pageable);
+        Page<StudentResponse> page = studentService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<StudentResponse>>builder()
                 .success(true)
                 .message("Students retrieved successfully")
@@ -72,12 +76,52 @@ public class StudentController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<StudentResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Student UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<StudentResponse>builder()
                 .success(true)
                 .message("Student retrieved successfully")
-                .data(studentService.findById(id))
+                .data(studentService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
+    }
+
+    @PostMapping("/join")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<StudentResponse>> join(
+            Authentication authentication,
+            @Valid @RequestBody InviteCodeJoinRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<StudentResponse>builder()
+                        .success(true)
+                        .message("Joined mosque successfully")
+                        .data(studentService.joinByInviteCode(userId, request.getInviteCode()))
+                        .build());
+    }
+
+    @PostMapping("/onboard")
+    @Operation(
+            summary = "Self-onboard as a student",
+            description = "Links the authenticated student user to a mosque. Rejects if a profile already exists."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Student onboarded successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request body or validation errors"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Wrong role or profile already exists"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Mosque not found")
+    })
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<StudentResponse>> onboard(
+            Authentication authentication,
+            @Valid @RequestBody MosqueIdRequest request) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<StudentResponse>builder()
+                        .success(true)
+                        .message("Student onboarded successfully")
+                        .data(studentService.onboard(userId, request.getMosqueId()))
+                        .build());
     }
 
     @PostMapping
@@ -93,12 +137,13 @@ public class StudentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<StudentResponse>> create(
+            Authentication authentication,
             @Valid @RequestBody StudentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<StudentResponse>builder()
                         .success(true)
                         .message("Student created successfully")
-                        .data(studentService.create(request))
+                        .data(studentService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 
@@ -116,12 +161,13 @@ public class StudentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<StudentResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Student UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody StudentUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<StudentResponse>builder()
                 .success(true)
                 .message("Student updated successfully")
-                .data(studentService.update(id, request))
+                .data(studentService.update((UUID) authentication.getPrincipal(), id, request))
                 .build());
     }
 
@@ -139,8 +185,9 @@ public class StudentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
+            Authentication authentication,
             @Parameter(description = "Student UUID", required = true) @PathVariable UUID id) {
-        studentService.delete(id);
+        studentService.delete((UUID) authentication.getPrincipal(), id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Student deactivated successfully")

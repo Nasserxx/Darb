@@ -12,6 +12,7 @@ import com.darb.repositories.AchievementRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class AchievementService {
     private final StudentRepository studentRepository;
     private final MosqueRepository mosqueRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<AchievementResponse> findAll(Pageable pageable) {
@@ -37,8 +39,10 @@ public class AchievementService {
     }
 
     @Transactional(readOnly = true)
-    public AchievementResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public AchievementResponse findById(UUID callerId, UUID id) {
+        Achievement achievement = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, achievement.getStudent().getId());
+        return toResponse(achievement);
     }
 
     @Transactional(readOnly = true)

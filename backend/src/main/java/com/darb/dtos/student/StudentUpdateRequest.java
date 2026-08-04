@@ -8,6 +8,10 @@ import lombok.Data;
 @Schema(description = "Request body for updating a student")
 public class StudentUpdateRequest {
 
+    @Size(max = 100)
+    @Schema(description = "Full name of the student")
+    private String fullName;
+
     @Size(max = 50)
     @Schema(description = "National ID number")
     private String nationalId;
@@ -18,9 +22,7 @@ public class StudentUpdateRequest {
     @Schema(description = "Number of memorized Juz", example = "5")
     private Integer memorizedJuz;
 
-    @Schema(description = "Total absences count", example = "3")
-    private Integer totalAbsences;
-
-    @Schema(description = "Total late arrivals count", example = "1")
-    private Integer totalLateArrivals;
+    @Size(max = 50)
+    @Schema(description = "Parent invite code for linking parents to this student")
+    private String parentInviteCode;
 }

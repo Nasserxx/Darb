@@ -10,6 +10,7 @@ import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.MosqueAdminRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,19 +29,31 @@ public class MosqueAdminService {
     private final MosqueAdminRepository mosqueAdminRepository;
     private final UserRepository userRepository;
     private final MosqueRepository mosqueRepository;
+    private final MosqueAccessService mosqueAccessService;
+    private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
-    public Page<MosqueAdminResponse> findAll(Pageable pageable) {
-        return mosqueAdminRepository.findAll(pageable).map(this::toResponse);
+    public Page<MosqueAdminResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId,
+                pageable,
+                mosqueId -> mosqueAdminRepository.findByMosqueId(mosqueId, pageable),
+                mosqueAdminRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public MosqueAdminResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public MosqueAdminResponse findById(UUID callerId, UUID id) {
+        MosqueAdmin mosqueAdmin = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, mosqueAdmin.getMosque().getId());
+        return toResponse(mosqueAdmin);
     }
 
     @Transactional
-    public MosqueAdminResponse create(MosqueAdminCreateRequest request) {
+    public MosqueAdminResponse create(UUID callerId, MosqueAdminCreateRequest request,
+                                      String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
+
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
         Mosque mosque = mosqueRepository.findById(request.getMosqueId())
@@ -57,11 +70,23 @@ public class MosqueAdminService {
                 .assignedBy(assignedBy)
                 .build();
 
-        return toResponse(mosqueAdminRepository.save(mosqueAdmin));
+        MosqueAdmin saved = mosqueAdminRepository.save(mosqueAdmin);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    mosque.getId(),
+                    "MOSQUE_ADMIN_ASSIGN",
+                    auditReason,
+                    "MosqueAdmin",
+                    saved.getId());
+        }
+        return toResponse(saved);
     }
 
     @Transactional
-    public MosqueAdminResponse update(UUID id, MosqueAdminUpdateRequest request) {
+    public MosqueAdminResponse update(UUID callerId, UUID id, MosqueAdminUpdateRequest request,
+                                      String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
         MosqueAdmin mosqueAdmin = findEntityOrThrow(id);
 
         if (request.getPermission() != null) {
@@ -71,11 +96,33 @@ public class MosqueAdminService {
             mosqueAdmin.setIsPrimaryAdmin(request.getIsPrimaryAdmin());
         }
 
-        return toResponse(mosqueAdminRepository.save(mosqueAdmin));
+        MosqueAdmin saved = mosqueAdminRepository.save(mosqueAdmin);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    mosqueAdmin.getMosque().getId(),
+                    "MOSQUE_ADMIN_UPDATE",
+                    auditReason,
+                    "MosqueAdmin",
+                    saved.getId());
+        }
+        return toResponse(saved);
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id, String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
+        MosqueAdmin mosqueAdmin = findEntityOrThrow(id);
+        UUID mosqueId = mosqueAdmin.getMosque().getId();
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    mosqueId,
+                    "MOSQUE_ADMIN_REMOVE",
+                    auditReason,
+                    "MosqueAdmin",
+                    id);
+        }
         mosqueAdminRepository.deleteById(id);
     }
 

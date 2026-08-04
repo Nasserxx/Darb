@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import ar from './locales/ar.json'
+import appEn from './locales/app-en.json'
 import de from './locales/de.json'
 import en from './locales/en.json'
 
@@ -18,14 +19,15 @@ const API_ROLE_TO_I18N_KEY: Record<string, string> = {
   TEACHER: 'teacher',
   PARENT: 'parent',
   MOSQUE_ADMIN: 'mosque_admin',
+  SUPER_ADMIN: 'super_admin',
 }
 
 type LocaleBundle = { common: Record<string, unknown>; auth: Record<string, unknown> }
 
 const resources = {
-  en: { common: (en as LocaleBundle).common, auth: (en as LocaleBundle).auth },
-  ar: { common: (ar as LocaleBundle).common, auth: (ar as LocaleBundle).auth },
-  de: { common: (de as LocaleBundle).common, auth: (de as LocaleBundle).auth },
+  en: { common: (en as LocaleBundle).common, auth: (en as LocaleBundle).auth, app: appEn },
+  ar: { common: (ar as LocaleBundle).common, auth: (ar as LocaleBundle).auth, app: appEn },
+  de: { common: (de as LocaleBundle).common, auth: (de as LocaleBundle).auth, app: appEn },
 } as const
 
 function readStoredLocale(): string | null {
@@ -76,7 +78,7 @@ void i18n.use(initReactI18next).init({
   lng: initialLocale,
   fallbackLng: DEFAULT_LOCALE,
   supportedLngs: [...SUPPORTED_LOCALES],
-  ns: ['common', 'auth'],
+  ns: ['common', 'auth', 'app'],
   defaultNS: 'common',
   interpolation: { escapeValue: false },
 })

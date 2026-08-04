@@ -31,6 +31,9 @@ public class CircleResponse {
     @Schema(description = "Teacher ID who leads the circle")
     private UUID teacherId;
 
+    @Schema(description = "Teacher full name")
+    private String teacherName;
+
     @Schema(description = "Circle name", example = "Al-Baqarah Memorization Circle")
     private String name;
 
@@ -67,3 +70,4 @@ public class CircleResponse {
     @Schema(description = "Creation timestamp")
     private Instant createdAt;
 }
+

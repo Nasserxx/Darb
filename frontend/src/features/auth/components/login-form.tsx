@@ -3,7 +3,7 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { AuthShell } from "@/features/auth/components/auth-shell.tsx";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
+import { getUserSession } from "@/features/auth/session/storage.ts";
 import {
   loginSchema,
   type LoginFormValues,
@@ -25,12 +26,18 @@ import {
   applyFieldErrors,
   translateAuthApiMessage,
 } from "@/features/auth/utils/form-errors.ts";
+import { workspaceApi } from "@/features/workspace/api/workspace-api.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
+import {
+  deriveProfileStatus,
+  resolvePostAuthPath,
+} from "@/lib/navigation/post-auth.ts";
 
 export function LoginForm() {
   const { t } = useTranslation("auth");
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { locale } = useParams<{ locale: string }>();
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +60,23 @@ export function LoginForm() {
     const result = await login(values);
     if (result.ok) {
       toast.success(t("login.success"));
-      navigate(`/${localePrefix}/dashboard`, { replace: true });
+      const profile = await workspaceApi.getProfile();
+      const profileStatus = deriveProfileStatus(profile, false);
+      const returnTo =
+        (location.state as { from?: { pathname?: string } } | null)?.from
+          ?.pathname ?? null;
+      const session = getUserSession();
+      const path = resolvePostAuthPath({
+        locale: localePrefix,
+        role: session?.role ?? "",
+        profileStatus,
+        returnTo,
+        inviteCode: searchParams.get("code"),
+        roleHint: searchParams.get("role"),
+      });
+      if (path) {
+        navigate(path, { replace: true });
+      }
       return;
     }
 

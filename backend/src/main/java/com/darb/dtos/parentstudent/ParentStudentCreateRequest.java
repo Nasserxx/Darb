@@ -28,4 +28,7 @@ public class ParentStudentCreateRequest {
 
     @Schema(description = "Whether the parent receives notifications", example = "true")
     private Boolean receivesNotifications;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

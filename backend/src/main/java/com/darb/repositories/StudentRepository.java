@@ -1,5 +1,7 @@
 package com.darb.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -12,6 +14,9 @@ import java.util.UUID;
 public interface StudentRepository extends JpaRepository<Student, UUID>, JpaSpecificationExecutor<Student> {
     List<Student> findByUserId(UUID userId);
     List<Student> findByMosqueId(UUID mosqueId);
+    Page<Student> findByMosqueId(UUID mosqueId, Pageable pageable);
     List<Student> findByStatus(EnrollmentStatus status);
     List<Student> findByStatusNot(EnrollmentStatus status);
+
+    java.util.Optional<Student> findByParentInviteCode(String parentInviteCode);
 }

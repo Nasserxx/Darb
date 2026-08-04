@@ -44,8 +44,9 @@ public class PaymentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<PaymentResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<PaymentResponse> page = paymentService.findAll(pageable);
+        Page<PaymentResponse> page = paymentService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<PaymentResponse>>builder()
                 .success(true)
                 .message("Payments retrieved successfully")
@@ -73,11 +74,12 @@ public class PaymentController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaymentResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Payment UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<PaymentResponse>builder()
                 .success(true)
                 .message("Payment retrieved successfully")
-                .data(paymentService.findById(id))
+                .data(paymentService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 
@@ -95,9 +97,11 @@ public class PaymentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<PaymentResponse>>> findByMosque(
+            Authentication authentication,
             @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID mosqueId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<PaymentResponse> page = paymentService.findByMosqueId(mosqueId, pageable);
+        Page<PaymentResponse> page = paymentService.findByMosqueId(
+                (UUID) authentication.getPrincipal(), mosqueId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<PaymentResponse>>builder()
                 .success(true)
                 .message("Mosque payments retrieved successfully")
@@ -132,7 +136,7 @@ public class PaymentController {
                 .body(ApiResponse.<PaymentResponse>builder()
                         .success(true)
                         .message("Payment created successfully")
-                        .data(paymentService.create(request))
+                        .data(paymentService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 
@@ -150,12 +154,13 @@ public class PaymentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PaymentResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Payment UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody PaymentUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<PaymentResponse>builder()
                 .success(true)
                 .message("Payment updated successfully")
-                .data(paymentService.update(id, request))
+                .data(paymentService.update((UUID) authentication.getPrincipal(), id, request))
                 .build());
     }
 }

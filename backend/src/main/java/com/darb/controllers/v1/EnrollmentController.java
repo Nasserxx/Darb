@@ -44,11 +44,43 @@ public class EnrollmentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<EnrollmentResponse> page = enrollmentService.findAll(pageable);
+        Page<EnrollmentResponse> page = enrollmentService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<EnrollmentResponse>>builder()
                 .success(true)
                 .message("Enrollments retrieved successfully")
+                .data(PageResponse.<EnrollmentResponse>builder()
+                        .content(page.getContent())
+                        .pageNumber(page.getNumber())
+                        .pageSize(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .last(page.isLast())
+                        .build())
+                .build());
+    }
+
+    @GetMapping("/student/{studentId}")
+    @Operation(
+            summary = "List enrollments by student",
+            description = "Returns a paginated list of enrollments for a specific student. Accessible by any authenticated user."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Student enrollments retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid UUID format or pagination parameters"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Student not found")
+    })
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> findByStudent(
+            Authentication authentication,
+            @Parameter(description = "Student UUID", required = true) @PathVariable UUID studentId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<EnrollmentResponse> page = enrollmentService.findByStudentId((UUID) authentication.getPrincipal(), studentId, pageable);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<EnrollmentResponse>>builder()
+                .success(true)
+                .message("Student enrollments retrieved successfully")
                 .data(PageResponse.<EnrollmentResponse>builder()
                         .content(page.getContent())
                         .pageNumber(page.getNumber())
@@ -73,11 +105,12 @@ public class EnrollmentController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Enrollment UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<EnrollmentResponse>builder()
                 .success(true)
                 .message("Enrollment retrieved successfully")
-                .data(enrollmentService.findById(id))
+                .data(enrollmentService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 
@@ -119,12 +152,19 @@ public class EnrollmentController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Enrollment UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody EnrollmentUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<EnrollmentResponse>builder()
                 .success(true)
                 .message("Enrollment updated successfully")
-                .data(enrollmentService.update(id, request))
+                .data(enrollmentService.update(
+                        (UUID) authentication.getPrincipal(),
+                        id,
+                        request,
+                        auditReasonHeader,
+                        request.getAuditReason()))
                 .build());
     }
 }

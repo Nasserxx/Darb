@@ -29,4 +29,7 @@ public class AttendanceUpdateRequest {
 
     @Schema(description = "URL for excuse document")
     private String excuseDocumentUrl;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

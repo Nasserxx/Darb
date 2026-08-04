@@ -1,4 +1,5 @@
-import type { ApiResponse, AuthResponse } from "../features/auth/types/index.ts";
+import type { ApiResponse } from "./types/api.ts";
+import type { AuthResponse } from "../features/auth/types/index.ts";
 import {
   clearSession,
   getAccessToken,
@@ -6,10 +7,10 @@ import {
   setSessionFromAuthResponse,
 } from "../features/auth/session/storage.ts";
 
-export type { ApiResponse } from "../features/auth/types/index.ts";
+export type { ApiResponse } from "./types/api.ts";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+// Single source of truth for the backend URL. Change here → all API calls follow.
+const API_BASE_URL = "http://localhost:8080";
 
 export class ApiError extends Error {
   readonly status: number;

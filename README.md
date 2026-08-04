@@ -25,3 +25,11 @@ The backend lives under `backend/`. **Do not change Java or Spring Boot versions
 - Build with **`./mvnw`** from the `backend/` directory so everyone uses the same Maven version.
 - Library versions for Spring projects (for example Lombok, PostgreSQL driver) come from the **Spring Boot 4.0.5 dependency BOM**; see the [Spring Boot dependency versions](https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html) appendix. To list what Maven resolves on your machine: `cd backend && ./mvnw -q dependency:list`.
 - The build runs the **Maven Enforcer** plugin: if your JDK is not Java 25, or your Maven is older than 3.9.0, the build will fail with a message pointing back here.
+- Set `JWT_SECRET` before first run (see `.env.example`). The `dev` profile will not start without it.
+
+## Verification
+
+CI runs on every PR (`.github/workflows/ci.yml`):
+
+- **Backend:** `cd backend && ./mvnw test` (requires Docker for Testcontainers)
+- **Frontend:** `cd frontend && npm ci && npm run lint && npm run build`

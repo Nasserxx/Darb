@@ -19,4 +19,7 @@ public class EnrollmentUpdateRequest {
 
     @Schema(description = "Additional notes")
     private String notes;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

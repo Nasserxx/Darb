@@ -4,8 +4,35 @@ const ACCESS_TOKEN_KEY = "darb.accessToken";
 const REFRESH_TOKEN_KEY = "darb.refreshToken";
 const USER_KEY = "darb.user";
 
+// BroadcastChannel for cross-tab sync
+const SYNC_CHANNEL = "darb:auth";
+let channel: BroadcastChannel | null = null;
+
+function getChannel(): BroadcastChannel | null {
+  if (typeof window === "undefined") return null;
+  if (!channel) {
+    try {
+      channel = new BroadcastChannel(SYNC_CHANNEL);
+    } catch {
+      return null;
+    }
+  }
+  return channel;
+}
+
+type SyncMessage =
+  | { type: "SESSION_UPDATED"; session: UserSession }
+  | { type: "SESSION_CLEARED" };
+
+function broadcast(msg: SyncMessage): void {
+  const ch = getChannel();
+  if (ch) {
+    ch.postMessage(msg);
+  }
+}
+
 function readJson<T>(key: string): T | null {
-  const raw = sessionStorage.getItem(key);
+  const raw = localStorage.getItem(key);
   if (!raw) {
     return null;
   }
@@ -17,23 +44,23 @@ function readJson<T>(key: string): T | null {
 }
 
 function writeJson(key: string, value: unknown): void {
-  sessionStorage.setItem(key, JSON.stringify(value));
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function getAccessToken(): string | null {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function setAccessToken(token: string): void {
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
 }
 
 export function getRefreshToken(): string | null {
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function setRefreshToken(token: string): void {
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
 }
 
 export function getStoredUser(): Omit<
@@ -74,11 +101,46 @@ export function setSessionFromAuthResponse(auth: AuthResponse): UserSession {
     role: session.role,
     email: session.email,
   });
+  broadcast({ type: "SESSION_UPDATED", session });
   return session;
 }
 
 export function clearSession(): void {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  broadcast({ type: "SESSION_CLEARED" });
+}
+
+export function subscribeToSync(
+  onUpdate: (session: UserSession | null) => void,
+): () => void {
+  const ch = getChannel();
+  if (!ch) return () => {};
+
+  const handler = (event: MessageEvent<SyncMessage>) => {
+    if (event.data.type === "SESSION_UPDATED") {
+      const session = event.data.session;
+      // Update localStorage from the synced session
+      setAccessToken(session.accessToken);
+      setRefreshToken(session.refreshToken);
+      writeJson(USER_KEY, {
+        tokenType: session.tokenType,
+        expiresIn: session.expiresIn,
+        userId: session.userId,
+        fullName: session.fullName,
+        role: session.role,
+        email: session.email,
+      });
+      onUpdate(session);
+    } else if (event.data.type === "SESSION_CLEARED") {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+      onUpdate(null);
+    }
+  };
+
+  ch.addEventListener("message", handler);
+  return () => ch.removeEventListener("message", handler);
 }

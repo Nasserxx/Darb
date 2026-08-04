@@ -17,4 +17,5 @@ public interface MemorizationProgressRepository extends JpaRepository<Memorizati
     List<MemorizationProgress> findByStudentIdAndCircleId(UUID studentId, UUID circleId);
     Page<MemorizationProgress> findByStudentId(UUID studentId, Pageable pageable);
     Page<MemorizationProgress> findByCircleId(UUID circleId, Pageable pageable);
+    Page<MemorizationProgress> findByCircle_MosqueId(UUID mosqueId, Pageable pageable);
 }

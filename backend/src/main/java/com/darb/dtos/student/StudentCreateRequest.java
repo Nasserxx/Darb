@@ -19,6 +19,10 @@ public class StudentCreateRequest {
     @Schema(description = "Mosque ID where the student is enrolled", example = "b2c3d4e5-f6a7-8901-bcde-f12345678901")
     private UUID mosqueId;
 
+    @Size(max = 100)
+    @Schema(description = "Full name of the student")
+    private String fullName;
+
     @Size(max = 50)
     @Schema(description = "National ID number", example = "1098765432")
     private String nationalId;
@@ -28,4 +32,8 @@ public class StudentCreateRequest {
 
     @Schema(description = "Number of memorized Juz", example = "5")
     private Integer memorizedJuz;
+
+    @Size(max = 50)
+    @Schema(description = "Parent invite code for linking parents to this student")
+    private String parentInviteCode;
 }

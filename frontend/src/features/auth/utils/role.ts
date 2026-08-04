@@ -34,6 +34,7 @@ export function normalizeRole(roleFromApi: string): string {
 
 export type RoleKey =
   | "super_admin"
+  | "super_admin"
   | "mosque_admin"
   | "teacher"
   | "student"

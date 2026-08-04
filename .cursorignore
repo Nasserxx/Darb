@@ -1,106 +1,176 @@
 ﻿# =============================================================================
-# .cursorignore — Darb monorepo (React/Vite + Spring Boot)
-#
-# Excludes dependencies, build artifacts, secrets, and machine-generated bulk
-# from Cursor AI indexing. Source code, config, docs, and navigation aids stay
-# accessible. Aligns with .gitignore plus Cursor-specific exclusions.
+# Cursor ignore — excludes libraries, binaries, build output, and caches
+# from AI indexing. Syntax matches .gitignore.
 # =============================================================================
 
-# --- Dependencies (vendor code; never edited) ---
-**/node_modules/
-.venv/
-
-# --- Build outputs ---
-**/target/
-**/dist/
-frontend/dist-ssr/
-build/
-out/
-*.class
-
-# --- Archives & packaged artifacts ---
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# --- Secrets (templates like .env.example remain indexed) ---
-.env
-.env.local
-.env.*.local
-frontend/.env.local
-!.env.example
-!frontend/.env.example
-
-# --- Logs ---
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# --- OS & editor noise ---
-.DS_Store
-Thumbs.db
-*~
-*.swp
-*.swo
-.idea/
-*.iml
-*.iws
-*.ipr
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# --- Git internals (not useful for code assistance) ---
+# --- Version control ---
 .git/
 
-# --- JVM crash dumps ---
+# --- Java / Maven / Spring Boot ---
+target/
+out/
+.m2/
+.m2repo/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
 hs_err_pid*
 replay_pid*
-
-# --- Maven / IDE tooling metadata ---
-HELP.md
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
 dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.apt_generated
+
+# --- Node / frontend ---
+dist
+build
+.vite
+.nuxt
+.next
+.output
+.parcel-cache
+.turbo
+.cache
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# --- Lock files (large, rarely needed for context) ---
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lock
+bun.lockb
+
+# --- Compiled / minified / generated web assets ---
+*.min.js
+*.min.css
+*.bundle.js
+*.chunk.js
+*.map
+*.bundle.css
+
+# --- Binaries and archives ---
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.bin
+*.dat
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+*.iso
+*.dmg
+*.msi
+*.deb
+*.rpm
+*.apk
+*.ipa
+
+# --- Media (binary; exclude from indexing) ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.bmp
+*.tiff
+*.svg
+*.mp3
+*.mp4
+*.wav
+*.avi
+*.mov
+*.webm
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+
+# --- Documents / office (usually not source) ---
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+
+# --- Logs, temp, and crash dumps ---
+*.log
+*.tmp
+*.temp
+*.pid
+*.out
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# --- IDE and editor ---
+.idea/
+*.iml
+*.ipr
+*.iws
 .classpath
-.factorypath
 .project
-.settings
+.settings/
+.factorypath
 .springBeans
-.sts4-cache
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-.gradle/
+.sts4-cache/
 
-# --- Legacy / scratch ---
-*.ctxt
-.mtj.tmp/
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# --- Graphify: machine output only (keep navigation docs for architecture Q&A) ---
-graphify-out/*
-!graphify-out/GRAPH_REPORT.md
-!graphify-out/graph.json
-!graphify-out/.graphify_python
-!graphify-out/wiki/
-!graphify-out/wiki/**
+# --- Test / coverage / reports ---
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/playwright-report/
+**/allure-results/
+**/surefire-reports/
+**/failsafe-reports/
+**/jacoco.exec
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc
 
-# --- Agent skills: bulk reference content (SKILL.md entry points stay indexed) ---
-.agents/skills
+# --- Docker / local runtime data ---
+**/.docker/
+
+# --- Secrets and keys (sensitive, not useful for AI context) ---
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.key
+**/*.keystore
+**/*.jks
+.env
+.env.*
+!.env.example
+
+# --- Graphify / analysis artifacts ---
+graphify-out/cache
+graphify-out/graph.html
+# --- Agent / tool caches ---
+.claude
+node_modules

@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.constraints.NotBlank;
 import java.util.UUID;
 
 @RestController
@@ -58,6 +59,39 @@ public class UserController {
                 .build());
     }
 
+    @GetMapping("/search")
+    @Operation(
+            summary = "Search users",
+            description = "Searches users by name or email. Returns a paginated list matching the query. Accessible by SUPER_ADMIN, MOSQUE_ADMIN, and TEACHER."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Search results retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid query parameter"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> searchUsers(
+            Authentication authentication,
+            @Parameter(description = "Search query (name or email)", required = true)
+            @RequestParam @NotBlank String q,
+            @PageableDefault(size = 20) Pageable pageable) {
+        UUID callerId = (UUID) authentication.getPrincipal();
+        Page<UserResponse> page = userService.searchUsers(callerId, q, pageable);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<UserResponse>>builder()
+                .success(true)
+                .message("Search results retrieved successfully")
+                .data(PageResponse.<UserResponse>builder()
+                        .content(page.getContent())
+                        .pageNumber(page.getNumber())
+                        .pageSize(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .last(page.isLast())
+                        .build())
+                .build());
+    }
+
     @GetMapping("/{id}")
     @Operation(
             summary = "Get user by ID",
@@ -72,11 +106,13 @@ public class UserController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "User UUID", required = true) @PathVariable UUID id) {
+        UUID callerId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .success(true)
                 .message("User retrieved successfully")
-                .data(userService.findById(id))
+                .data(userService.findById(callerId, id))
                 .build());
     }
 
@@ -95,7 +131,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .success(true)
                 .message("Current user profile retrieved")
-                .data(userService.findById(userId))
+                .data(userService.findById(userId, userId))
                 .build());
     }
 

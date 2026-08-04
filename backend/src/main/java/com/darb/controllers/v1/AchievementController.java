@@ -43,11 +43,12 @@ public class AchievementController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AchievementResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Achievement UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<AchievementResponse>builder()
                 .success(true)
                 .message("Achievement retrieved successfully")
-                .data(achievementService.findById(id))
+                .data(achievementService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 

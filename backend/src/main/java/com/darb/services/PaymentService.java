@@ -14,6 +14,7 @@ import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.PaymentRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,30 +34,40 @@ public class PaymentService {
     private final CircleRepository circleRepository;
     private final MosqueRepository mosqueRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
-    public Page<PaymentResponse> findAll(Pageable pageable) {
-        return paymentRepository.findAll(pageable).map(this::toResponse);
+    public Page<PaymentResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId,
+                pageable,
+                mosqueId -> paymentRepository.findByMosqueId(mosqueId, pageable),
+                paymentRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public PaymentResponse findById(UUID callerId, UUID id) {
+        Payment payment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, payment.getMosque().getId());
+        return toResponse(payment);
     }
 
     @Transactional(readOnly = true)
-    public Page<PaymentResponse> findByMosqueId(UUID mosqueId, Pageable pageable) {
+    public Page<PaymentResponse> findByMosqueId(UUID callerId, UUID mosqueId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessMosque(callerId, mosqueId);
         return paymentRepository.findByMosqueId(mosqueId, pageable).map(this::toResponse);
     }
 
     @Transactional
-    public PaymentResponse create(PaymentCreateRequest request) {
+    public PaymentResponse create(UUID callerId, PaymentCreateRequest request) {
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
         Circle circle = circleRepository.findById(request.getCircleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
         Mosque mosque = mosqueRepository.findById(request.getMosqueId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
+        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
         User recordedBy = userRepository.findById(request.getRecordedBy())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getRecordedBy()));
 
@@ -81,8 +92,9 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse update(UUID id, PaymentUpdateRequest request) {
+    public PaymentResponse update(UUID callerId, UUID id, PaymentUpdateRequest request) {
         Payment payment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, payment.getMosque().getId());
 
         if (request.getDiscount() != null) {
             payment.setDiscount(request.getDiscount());
@@ -113,7 +125,9 @@ public class PaymentService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
+        Payment payment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, payment.getMosque().getId());
         paymentRepository.deleteById(id);
     }
 

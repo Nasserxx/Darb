@@ -53,3 +53,6 @@ build/
 
 ### VS Code (workspace-local under backend/ only) ###
 .vscode/
+
+.local-memory-mcp
+

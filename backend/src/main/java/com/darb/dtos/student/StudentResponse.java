@@ -24,6 +24,9 @@ public class StudentResponse {
     @Schema(description = "Associated user ID")
     private UUID userId;
 
+    @Schema(description = "Full name of the student")
+    private String fullName;
+
     @Schema(description = "Enrolled mosque ID")
     private UUID mosqueId;
 
@@ -47,4 +50,7 @@ public class StudentResponse {
 
     @Schema(description = "Timestamp when the student enrolled")
     private Instant enrolledAt;
+
+    @Schema(description = "Parent invite code for linking parents to this student")
+    private String parentInviteCode;
 }

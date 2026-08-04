@@ -3,10 +3,17 @@ package com.darb.services;
 import com.darb.dtos.user.UserCreateRequest;
 import com.darb.dtos.user.UserResponse;
 import com.darb.dtos.user.UserUpdateRequest;
+import com.darb.entities.MosqueAdmin;
+import com.darb.entities.Student;
+import com.darb.entities.Teacher;
 import com.darb.entities.User;
+import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.DuplicateResourceException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.jpa.domain.Specification;
 import java.util.UUID;
 
 @Slf4j
@@ -24,6 +32,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<UserResponse> findAll(Pageable pageable) {
@@ -31,7 +40,8 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse findById(UUID id) {
+    public UserResponse findById(UUID callerId, UUID id) {
+        mosqueAccessService.assertCanAccessUser(callerId, id);
         return toResponse(findEntityOrThrow(id));
     }
 
@@ -87,6 +97,48 @@ public class UserService {
         User user = findEntityOrThrow(id);
         user.setIsActive(false);
         userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> searchUsers(UUID callerId, String query, Pageable pageable) {
+        UserRole role = findEntityOrThrow(callerId).getRole();
+
+        String like = "%" + query.toLowerCase() + "%";
+        Specification<User> spec = (root, _, cb) -> cb.or(
+                cb.like(cb.lower(root.get("fullName")), like),
+                cb.like(cb.lower(root.get("email")), like)
+        );
+
+        if (role == UserRole.MOSQUE_ADMIN || role == UserRole.TEACHER) {
+            UUID mosqueId = mosqueAccessService.resolveCallerMosqueId(callerId, role);
+            if (mosqueId != null) {
+                spec = spec.and((root, q, cb) -> {
+                    q.distinct(true);
+                    Subquery<UUID> studentSubquery = q.subquery(UUID.class);
+                    Root<Student> studentRoot = studentSubquery.from(Student.class);
+                    studentSubquery.select(studentRoot.get("user").get("id"))
+                            .where(cb.equal(studentRoot.get("mosque").get("id"), mosqueId));
+
+                    Subquery<UUID> teacherSubquery = q.subquery(UUID.class);
+                    Root<Teacher> teacherRoot = teacherSubquery.from(Teacher.class);
+                    teacherSubquery.select(teacherRoot.get("user").get("id"))
+                            .where(cb.equal(teacherRoot.get("mosque").get("id"), mosqueId));
+
+                    Subquery<UUID> adminSubquery = q.subquery(UUID.class);
+                    Root<MosqueAdmin> adminRoot = adminSubquery.from(MosqueAdmin.class);
+                    adminSubquery.select(adminRoot.get("user").get("id"))
+                            .where(cb.equal(adminRoot.get("mosque").get("id"), mosqueId));
+
+                    return cb.or(
+                            root.get("id").in(studentSubquery),
+                            root.get("id").in(teacherSubquery),
+                            root.get("id").in(adminSubquery)
+                    );
+                });
+            }
+        }
+
+        return userRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

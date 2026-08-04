@@ -8,11 +8,13 @@ import com.darb.entities.Enrollment;
 import com.darb.entities.Student;
 import com.darb.entities.User;
 import com.darb.entities.enums.EnrollmentStatus;
+import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.EnrollmentRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,15 +34,29 @@ public class EnrollmentService {
     private final StudentRepository studentRepository;
     private final CircleRepository circleRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
+    private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
-    public Page<EnrollmentResponse> findAll(Pageable pageable) {
-        return enrollmentRepository.findAll(pageable).map(this::toResponse);
+    public Page<EnrollmentResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId, pageable,
+                mosqueId -> enrollmentRepository.findByCircle_MosqueId(mosqueId, pageable),
+                enrollmentRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public EnrollmentResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public Page<EnrollmentResponse> findByStudentId(UUID callerId, UUID studentId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
+        return enrollmentRepository.findByStudentId(studentId, pageable).map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public EnrollmentResponse findById(UUID callerId, UUID id) {
+        Enrollment enrollment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, enrollment.getStudent().getId());
+        return toResponse(enrollment);
     }
 
     @Transactional
@@ -49,6 +65,11 @@ public class EnrollmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
         Circle circle = circleRepository.findById(request.getCircleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
+
+        if (!student.getMosque().getId().equals(circle.getMosque().getId())) {
+            throw new BadRequestException("Student and circle must belong to the same mosque");
+        }
+
         User approvedBy = userRepository.findById(request.getApprovedBy())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getApprovedBy()));
 
@@ -65,8 +86,11 @@ public class EnrollmentService {
     }
 
     @Transactional
-    public EnrollmentResponse update(UUID id, EnrollmentUpdateRequest request) {
+    public EnrollmentResponse update(UUID callerId, UUID id, EnrollmentUpdateRequest request,
+                                     String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
         Enrollment enrollment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, enrollment.getStudent().getId());
 
         if (request.getStatus() != null) {
             enrollment.setStatus(request.getStatus());
@@ -78,12 +102,23 @@ public class EnrollmentService {
             enrollment.setNotes(request.getNotes());
         }
 
-        return toResponse(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+        if (auditReason != null && request.getStatus() != null) {
+            overrideAuditService.record(
+                    callerId,
+                    enrollment.getCircle().getMosque().getId(),
+                    "ENROLLMENT_STATUS_FORCE",
+                    auditReason,
+                    "Enrollment",
+                    saved.getId());
+        }
+        return toResponse(saved);
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
         Enrollment enrollment = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, enrollment.getStudent().getId());
         enrollment.setStatus(EnrollmentStatus.WITHDRAWN);
         enrollment.setWithdrawnDate(LocalDate.now());
         enrollmentRepository.save(enrollment);

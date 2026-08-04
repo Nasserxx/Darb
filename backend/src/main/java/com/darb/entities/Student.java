@@ -55,4 +55,7 @@ public class Student extends BaseAuditableEntity {
 
     @Column(name = "enrolled_at", nullable = false)
     private Instant enrolledAt;
+
+    @Column(name = "parent_invite_code", length = 50, unique = true)
+    private String parentInviteCode;
 }

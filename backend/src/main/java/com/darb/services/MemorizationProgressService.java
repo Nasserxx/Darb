@@ -4,14 +4,19 @@ import com.darb.dtos.memorization.MemorizationProgressCreateRequest;
 import com.darb.dtos.memorization.MemorizationProgressResponse;
 import com.darb.dtos.memorization.MemorizationProgressUpdateRequest;
 import com.darb.entities.Circle;
+import com.darb.entities.Enrollment;
 import com.darb.entities.MemorizationProgress;
 import com.darb.entities.Student;
 import com.darb.entities.Teacher;
+import com.darb.entities.enums.EnrollmentStatus;
+import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
+import com.darb.repositories.EnrollmentRepository;
 import com.darb.repositories.MemorizationProgressRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.TeacherRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,24 +35,36 @@ public class MemorizationProgressService {
     private final StudentRepository studentRepository;
     private final CircleRepository circleRepository;
     private final TeacherRepository teacherRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
-    public Page<MemorizationProgressResponse> findAll(Pageable pageable) {
-        return memorizationProgressRepository.findAll(pageable).map(this::toResponse);
+    public Page<MemorizationProgressResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId, pageable,
+                mosqueId -> memorizationProgressRepository.findByCircle_MosqueId(mosqueId, pageable),
+                memorizationProgressRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public MemorizationProgressResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public MemorizationProgressResponse findById(UUID callerId, UUID id) {
+        MemorizationProgress progress = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, progress.getStudent().getId());
+        return toResponse(progress);
     }
 
     @Transactional(readOnly = true)
-    public Page<MemorizationProgressResponse> findByStudentId(UUID studentId, Pageable pageable) {
+    public Page<MemorizationProgressResponse> findByStudentId(UUID callerId, UUID studentId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
         return memorizationProgressRepository.findByStudentId(studentId, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<MemorizationProgressResponse> findByCircleId(UUID circleId, Pageable pageable) {
+    public Page<MemorizationProgressResponse> findByCircleId(UUID callerId, UUID circleId, Pageable pageable) {
+        Circle circle = circleRepository.findById(circleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", circleId));
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
         return memorizationProgressRepository.findByCircleId(circleId, pageable).map(this::toResponse);
     }
 
@@ -59,6 +76,15 @@ public class MemorizationProgressService {
                 .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
         Teacher teacher = teacherRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", request.getTeacherId()));
+
+        // Verify active enrollment with optimistic locking to prevent TOCTOU race
+        Enrollment enrollment = enrollmentRepository
+                .findByStudentIdAndCircleId(request.getStudentId(), request.getCircleId())
+                .orElseThrow(() -> new BadRequestException("Student is not enrolled in this circle"));
+
+        if (enrollment.getStatus() != EnrollmentStatus.ACTIVE) {
+            throw new BadRequestException("Student enrollment is not active");
+        }
 
         MemorizationProgress progress = MemorizationProgress.builder()
                 .student(student)
@@ -78,8 +104,9 @@ public class MemorizationProgressService {
     }
 
     @Transactional
-    public MemorizationProgressResponse update(UUID id, MemorizationProgressUpdateRequest request) {
+    public MemorizationProgressResponse update(UUID callerId, UUID id, MemorizationProgressUpdateRequest request) {
         MemorizationProgress progress = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, progress.getStudent().getId());
 
         if (request.getGrade() != null) {
             progress.setGrade(request.getGrade());
