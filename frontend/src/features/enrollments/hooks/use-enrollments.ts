@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { PageParams } from "@/lib/types/api.ts";
+import type { PageParams, PageResponse } from "@/lib/types/api.ts";
 import { enrollmentsApi } from "../api/enrollments-api.ts";
 import type {
   EnrollmentCreateRequest,
+  EnrollmentResponse,
   EnrollmentUpdateRequest,
 } from "../types/index.ts";
 import { enrollmentKeys } from "./query-keys.ts";
@@ -12,6 +13,18 @@ export function useEnrollments(params: PageParams = {}) {
   return useQuery({
     queryKey: enrollmentKeys.list(params),
     queryFn: () => enrollmentsApi.list(params),
+  });
+}
+
+export function useStudentEnrollments(
+  studentId: string | undefined,
+  params: PageParams = {},
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: enrollmentKeys.student(studentId ?? "", params),
+    queryFn: () => enrollmentsApi.listByStudent(studentId!, params),
+    enabled: !!studentId && (options?.enabled ?? true),
   });
 }
 

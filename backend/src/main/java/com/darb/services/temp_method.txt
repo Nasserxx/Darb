@@ -1,0 +1,6 @@
+﻿    @Transactional(readOnly = true)
+    public Student findByUserId(UUID userId) {
+        return studentRepository.findByUserId(userId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "userId", userId));
+    }

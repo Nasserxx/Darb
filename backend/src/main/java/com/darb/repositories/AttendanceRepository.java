@@ -16,4 +16,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID>, J
     List<Attendance> findByCircleIdAndSessionDate(UUID circleId, LocalDate sessionDate);
     List<Attendance> findBySessionDate(LocalDate sessionDate);
     Page<Attendance> findByCircleId(UUID circleId, Pageable pageable);
+    Page<Attendance> findByEnrollment_StudentId(UUID studentId, Pageable pageable);
+    Page<Attendance> findByCircle_MosqueId(UUID mosqueId, Pageable pageable);
 }

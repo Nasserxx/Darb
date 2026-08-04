@@ -5,12 +5,14 @@ export interface StudentResponse {
   userId: Uuid;
   mosqueId: Uuid;
   nationalId: string | null;
+  fullName: string | null;
   medicalNotes: string | null;
   memorizedJuz: number | null;
   totalAbsences: number;
   totalLateArrivals: number;
   status: EnrollmentStatus;
   enrolledAt: Instant;
+  parentInviteCode?: string | null;
 }
 
 export interface StudentCreateRequest {
@@ -19,6 +21,7 @@ export interface StudentCreateRequest {
   nationalId?: string;
   medicalNotes?: string;
   memorizedJuz?: number;
+  parentInviteCode?: string;
 }
 
 export interface StudentUpdateRequest {
@@ -27,4 +30,5 @@ export interface StudentUpdateRequest {
   memorizedJuz?: number;
   totalAbsences?: number;
   totalLateArrivals?: number;
+  parentInviteCode?: string;
 }

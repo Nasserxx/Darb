@@ -1,11 +1,13 @@
 package com.darb.services;
 
 import com.darb.dtos.auth.*;
+import com.darb.entities.RefreshTokenHash;
 import com.darb.entities.User;
 import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.DuplicateResourceException;
 import com.darb.exceptions.UnauthorizedException;
+import com.darb.repositories.RefreshTokenHashRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -25,6 +30,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenHashRepository refreshTokenHashRepository;
 
     private static final java.util.Set<UserRole> SELF_REGISTRATION_ROLES =
             java.util.Set.of(UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.MOSQUE_ADMIN);
@@ -80,7 +86,16 @@ public class AuthService {
         user.setLastLogin(Instant.now());
         userRepository.save(user);
 
-        return generateAuthResponse(user);
+        AuthResponse response = generateAuthResponse(user);
+
+        // Store hash of the new refresh token
+        String tokenHash = sha256Hex(response.getRefreshToken());
+        refreshTokenHashRepository.save(RefreshTokenHash.builder()
+                .user(user)
+                .tokenHash(tokenHash)
+                .build());
+
+        return response;
     }
 
     @Transactional
@@ -92,6 +107,12 @@ public class AuthService {
             throw new UnauthorizedException("Invalid refresh token type");
         }
 
+        // Consume the old refresh token (rotation)
+        String tokenHash = sha256Hex(request.getRefreshToken());
+        RefreshTokenHash storedHash = refreshTokenHashRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
+        refreshTokenHashRepository.delete(storedHash);
+
         var userId = jwtService.getUserIdFromToken(request.getRefreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
@@ -100,7 +121,16 @@ public class AuthService {
             throw new UnauthorizedException("Account is deactivated");
         }
 
-        return generateAuthResponse(user);
+        AuthResponse response = generateAuthResponse(user);
+
+        // Store hash of the new refresh token
+        String newHash = sha256Hex(response.getRefreshToken());
+        refreshTokenHashRepository.save(RefreshTokenHash.builder()
+                .user(user)
+                .tokenHash(newHash)
+                .build());
+
+        return response;
     }
 
     @Transactional
@@ -114,6 +144,27 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        // Invalidate all existing refresh tokens
+        refreshTokenHashRepository.deleteByUserId(userId);
+    }
+
+    @Transactional
+    public void logout(UUID userId) {
+        refreshTokenHashRepository.deleteByUserId(userId);
+    }
+
+    private String sha256Hex(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 
     private AuthResponse generateAuthResponse(User user) {

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/page-header.tsx";
@@ -31,11 +31,13 @@ import {
   useUpdateAttendance,
 } from "@/features/attendance/hooks/use-attendance.ts";
 import type { AttendanceStatus } from "@/lib/types/api.ts";
+import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useCircle } from "@/features/circles/hooks/use-circles.ts";
 import { useEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts";
 import { useStudents } from "@/features/students/hooks/use-students.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { canMarkAttendance } from "@/lib/navigation/role-permissions.ts";
 import { ArrowLeftIcon } from "lucide-react";
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = [
@@ -59,8 +61,11 @@ type RosterRow = {
 
 export function CircleAttendancePage() {
   const { t } = useTranslation("app");
+  const { user } = useAuth();
   const { locale, circleId } = useParams<{ locale: string; circleId: string }>();
   const localePrefix = locale ?? DEFAULT_LOCALE;
+  const canMark = canMarkAttendance(user?.role);
+
   const [sessionDate, setSessionDate] = useState(todayLocalDate);
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,7 +88,7 @@ export function CircleAttendancePage() {
   const studentLabels = useMemo(() => {
     const map = new Map<string, string>();
     for (const student of studentsPage?.content ?? []) {
-      map.set(student.id, student.id.slice(0, 8));
+      map.set(student.id, student.fullName ?? student.id.slice(0, 8));
     }
     return map;
   }, [studentsPage?.content]);
@@ -163,6 +168,10 @@ export function CircleAttendancePage() {
     }
   }
 
+  if (!canMark) {
+    return <Navigate to={`/${localePrefix}/forbidden`} replace />;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Button variant="ghost" size="sm" className="w-fit" asChild>
@@ -210,7 +219,7 @@ export function CircleAttendancePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("attendance.student")}</TableHead>
+                <TableHead>Student Name</TableHead>
                 <TableHead>{t("attendance.status")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -255,3 +264,6 @@ export function CircleAttendancePage() {
     </div>
   );
 }
+
+
+

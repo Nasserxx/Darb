@@ -80,6 +80,13 @@ export const mosquesApi = {
       body: JSON.stringify({ mosqueId }),
     }),
 
+  cancelMyJoinRequest: async (): Promise<void> => {
+    await apiFetch<ApiResponse<void>>(`${BASE_PATH}/join-requests/my`, {
+      method: "DELETE",
+      auth: true,
+    });
+  },
+
   getInviteCodes: () =>
     fetchData<MosqueInviteCodesResponse>(`${BASE_PATH}/invite-codes`),
 

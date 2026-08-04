@@ -21,4 +21,6 @@ public interface MosqueMemberJoinRequestRepository extends JpaRepository<MosqueM
             UUID userId,
             JoinRequestStatus status,
             UserRole requestedRole);
+
+    List<MosqueMemberJoinRequest> findByStatus(JoinRequestStatus status);
 }

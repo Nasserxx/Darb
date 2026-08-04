@@ -9,8 +9,8 @@ import {
 
 export type { ApiResponse } from "./types/api.ts";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+// Single source of truth for the backend URL. Change here → all API calls follow.
+const API_BASE_URL = "http://localhost:8080";
 
 export class ApiError extends Error {
   readonly status: number;

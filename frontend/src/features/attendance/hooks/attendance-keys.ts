@@ -9,4 +9,7 @@ export const attendanceKeys = {
     [...attendanceKeys.circles(), circleId, params] as const,
   details: () => [...attendanceKeys.all, "detail"] as const,
   detail: (id: string) => [...attendanceKeys.details(), id] as const,
+  students: () => [...attendanceKeys.all, "student"] as const,
+  student: (studentId: string, params: PageParams) =>
+    [...attendanceKeys.students(), studentId, params] as const,
 };

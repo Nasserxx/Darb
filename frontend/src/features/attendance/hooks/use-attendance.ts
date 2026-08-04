@@ -46,6 +46,22 @@ export function useAttendanceByCircle(
   });
 }
 
+export function useAttendanceByStudent(
+  studentId: string | undefined,
+  params: PageParams = {},
+  options?: Omit<
+    UseQueryOptions<PageResponse<AttendanceResponse>>,
+    "queryKey" | "queryFn" | "enabled"
+  >,
+) {
+  return useQuery({
+    queryKey: attendanceKeys.student(studentId ?? "", params),
+    queryFn: () => attendanceApi.listByStudent(studentId!, params),
+    enabled: !!studentId,
+    ...options,
+  });
+}
+
 export function useAttendance(
   id: string | undefined,
   options?: Omit<
@@ -96,6 +112,28 @@ export function useUpdateAttendance(
   return useMutation({
     ...options,
     mutationFn: ({ id, body }) => attendanceApi.update(id, body),
+    onSuccess: (...args) => {
+      const [, variables] = args;
+      queryClient.setQueryData(attendanceKeys.detail(variables.id), args[0]);
+      void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
+      return userOnSuccess?.(...args);
+    },
+  });
+}
+
+export function useSubmitExcuse(
+  options?: UseMutationOptions<
+    AttendanceResponse,
+    Error,
+    { id: string; body: { absenceReason?: string; excuseDocumentUrl?: string } }
+  >,
+) {
+  const queryClient = useQueryClient();
+  const userOnSuccess = options?.onSuccess;
+
+  return useMutation({
+    ...options,
+    mutationFn: ({ id, body }) => attendanceApi.submitExcuse(id, body),
     onSuccess: (...args) => {
       const [, variables] = args;
       queryClient.setQueryData(attendanceKeys.detail(variables.id), args[0]);

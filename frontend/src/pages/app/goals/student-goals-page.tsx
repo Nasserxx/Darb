@@ -40,6 +40,7 @@ import {
 } from "@/lib/errors/map-api-error.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
+import { canManageGoals } from "@/lib/navigation/role-permissions.ts";
 import type { GoalStatus } from "@/lib/types/api.ts";
 
 const GOAL_STATUSES: GoalStatus[] = [
@@ -72,9 +73,7 @@ export function StudentGoalsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const role = user ? normalizeApiRole(user.role) : null;
-  const canManage = role
-    ? ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"].includes(role)
-    : false;
+  const canManage = canManageGoals(user?.role);
 
   const { data, isLoading } = useGoalsByStudent(studentId, params);
   const { data: enrollmentsPage } = useEnrollments({ page: 0, size: 500 });

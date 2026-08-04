@@ -3,8 +3,10 @@ export { attendanceKeys } from "./hooks/attendance-keys.ts";
 export {
   useAttendance,
   useAttendanceByCircle,
+  useAttendanceByStudent,
   useAttendanceList,
   useCreateAttendance,
+  useSubmitExcuse,
   useUpdateAttendance,
 } from "./hooks/use-attendance.ts";
 export {

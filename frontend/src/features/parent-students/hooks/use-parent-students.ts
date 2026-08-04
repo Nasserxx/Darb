@@ -23,6 +23,13 @@ export function useParentStudent(id: string, options?: { enabled?: boolean }) {
   });
 }
 
+export function useMyChildren() {
+  return useQuery({
+    queryKey: [...parentStudentKeys.all, "my-children"],
+    queryFn: () => parentStudentsApi.getMyChildren(),
+  });
+}
+
 export function useCreateParentStudent() {
   const queryClient = useQueryClient();
 

@@ -10,6 +10,7 @@ import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.ReportRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final MosqueRepository mosqueRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<ReportResponse> findAll(Pageable pageable) {
@@ -35,8 +37,10 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public ReportResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public ReportResponse findById(UUID callerId, UUID id) {
+        Report report = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, report.getMosque().getId());
+        return toResponse(report);
     }
 
     @Transactional(readOnly = true)

@@ -140,13 +140,18 @@ public class MosqueAdminController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<MosqueAdminResponse>> create(
             Authentication authentication,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody MosqueAdminCreateRequest request) {
         request.setAssignedBy((UUID) authentication.getPrincipal());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<MosqueAdminResponse>builder()
                         .success(true)
                         .message("Mosque admin assigned successfully")
-                        .data(mosqueAdminService.create(request))
+                        .data(mosqueAdminService.create(
+                                (UUID) authentication.getPrincipal(),
+                                request,
+                                auditReasonHeader,
+                                request.getAuditReason()))
                         .build());
     }
 
@@ -164,12 +169,19 @@ public class MosqueAdminController {
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<MosqueAdminResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Mosque admin assignment UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody MosqueAdminUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<MosqueAdminResponse>builder()
                 .success(true)
                 .message("Mosque admin updated successfully")
-                .data(mosqueAdminService.update(id, request))
+                .data(mosqueAdminService.update(
+                        (UUID) authentication.getPrincipal(),
+                        id,
+                        request,
+                        auditReasonHeader,
+                        request.getAuditReason()))
                 .build());
     }
 
@@ -187,8 +199,14 @@ public class MosqueAdminController {
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @Parameter(description = "Mosque admin assignment UUID", required = true) @PathVariable UUID id) {
-        mosqueAdminService.delete(id);
+            Authentication authentication,
+            @Parameter(description = "Mosque admin assignment UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
+        mosqueAdminService.delete(
+                (UUID) authentication.getPrincipal(),
+                id,
+                auditReasonHeader,
+                null);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Mosque admin removed successfully")

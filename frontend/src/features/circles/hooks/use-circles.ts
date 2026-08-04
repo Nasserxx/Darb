@@ -8,10 +8,14 @@ import type {
 } from "../types/index.ts";
 import { circleKeys } from "./query-keys.ts";
 
-export function useCircles(params: PageParams = {}) {
+export function useCircles(
+  params: PageParams = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: circleKeys.list(params),
     queryFn: () => circlesApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 

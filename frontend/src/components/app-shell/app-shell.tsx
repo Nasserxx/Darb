@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { AppLogoLink } from "@/components/app-logo-link.tsx";
+import { CapabilityChip } from "@/components/shared/capability-chip.tsx";
 import { LocaleSwitcher } from "@/components/locale-switcher.tsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,8 +89,9 @@ export function AppShell({ children }: AppShellProps) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/80 px-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger />
+            <CapabilityChip className="hidden sm:inline-flex" />
           </div>
           <div className="flex items-center gap-2">
             <LocaleSwitcher />

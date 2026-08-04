@@ -15,6 +15,7 @@ public interface CircleRepository extends JpaRepository<Circle, UUID>, JpaSpecif
     List<Circle> findByMosqueId(UUID mosqueId);
     Page<Circle> findByMosqueId(UUID mosqueId, Pageable pageable);
     List<Circle> findByTeacherId(UUID teacherId);
+    Page<Circle> findByTeacherId(UUID teacherId, Pageable pageable);
     List<Circle> findByStatus(CircleStatus status);
     List<Circle> findByMosqueIdAndStatus(UUID mosqueId, CircleStatus status);
 }

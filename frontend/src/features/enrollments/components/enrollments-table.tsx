@@ -51,12 +51,12 @@ export function EnrollmentsTable({ canManage }: EnrollmentsTableProps) {
         {
           id: "student",
           header: t("enrollments.studentId"),
-          cell: (row) => formatShortId(row.studentId),
+          cell: (row) => row.studentName ?? formatShortId(row.studentId),
         },
         {
           id: "circle",
           header: t("enrollments.circleId"),
-          cell: (row) => formatShortId(row.circleId),
+          cell: (row) => row.circleName ?? formatShortId(row.circleId),
         },
         {
           id: "status",

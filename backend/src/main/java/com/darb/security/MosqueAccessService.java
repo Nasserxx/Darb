@@ -1,8 +1,8 @@
 package com.darb.security;
 
+import com.darb.entities.ParentStudent;
 import com.darb.entities.Student;
 import com.darb.entities.Teacher;
-import com.darb.entities.User;
 import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
@@ -70,6 +70,12 @@ public class MosqueAccessService {
         return mosqueId;
     }
 
+    public void assertCanAccessStudent(UUID callerId, UUID studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        assertCanAccessStudent(callerId, student);
+    }
+
     public void assertCanAccessStudent(UUID callerId, Student student) {
         UserRole role = findUserRole(callerId);
         if (role == UserRole.SUPER_ADMIN) {
@@ -83,13 +89,38 @@ public class MosqueAccessService {
             return;
         }
         if (role == UserRole.PARENT) {
-            boolean linked = parentStudentRepository.findByParentId(callerId).stream()
-                    .anyMatch(ps -> ps.getStudent().getId().equals(student.getId()));
-            if (linked) {
+            ParentStudent link = parentStudentRepository.findByParentId(callerId).stream()
+                    .filter(ps -> ps.getStudent().getId().equals(student.getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (link != null) {
+                UUID linkedMosqueId = link.getMosque() != null ? link.getMosque().getId() : null;
+                UUID currentMosqueId = student.getMosque().getId();
+                if (linkedMosqueId != null && !linkedMosqueId.equals(currentMosqueId)) {
+                    throw new ForbiddenException("Parent cannot access student from a different mosque");
+                }
                 return;
             }
         }
         throw new ForbiddenException("Access denied to this student");
+    }
+
+    public void assertCanAccessParentStudent(UUID callerId, ParentStudent link) {
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            return;
+        }
+        if (role == UserRole.PARENT) {
+            if (!link.getParent().getId().equals(callerId)) {
+                throw new ForbiddenException("Access denied to this parent-student link");
+            }
+            return;
+        }
+        if (role == UserRole.MOSQUE_ADMIN || role == UserRole.TEACHER) {
+            assertCanAccessMosque(callerId, link.getStudent().getMosque().getId());
+            return;
+        }
+        throw new ForbiddenException("Access denied to this parent-student link");
     }
 
     public void assertCanAccessTeacher(UUID callerId, Teacher teacher) {
@@ -105,6 +136,38 @@ public class MosqueAccessService {
             return;
         }
         throw new ForbiddenException("Access denied to this teacher");
+    }
+
+    public void assertCanAccessUser(UUID callerId, UUID targetUserId) {
+        if (callerId.equals(targetUserId)) {
+            return;
+        }
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            return;
+        }
+        if (role == UserRole.MOSQUE_ADMIN) {
+            UUID mosqueId = resolveCallerMosqueId(callerId, role);
+            if (mosqueId != null && isUserInMosque(targetUserId, mosqueId)) {
+                return;
+            }
+        }
+        throw new ForbiddenException("Access denied to this user");
+    }
+
+    private boolean isUserInMosque(UUID userId, UUID mosqueId) {
+        boolean isStudent = studentRepository.findByUserId(userId).stream()
+                .anyMatch(student -> student.getMosque().getId().equals(mosqueId));
+        if (isStudent) {
+            return true;
+        }
+        boolean isTeacher = teacherRepository.findByUserId(userId).stream()
+                .anyMatch(teacher -> teacher.getMosque().getId().equals(mosqueId));
+        if (isTeacher) {
+            return true;
+        }
+        return mosqueAdminRepository.findByUserId(userId).stream()
+                .anyMatch(admin -> admin.getMosque().getId().equals(mosqueId));
     }
 
     public <T> Page<T> pageForCaller(

@@ -19,6 +19,7 @@ import type { RegisterRequestBody } from "../schemas/register.schema.ts";
 import {
   clearSession,
   getUserSession,
+  subscribeToSync,
 } from "../session/storage.ts";
 import type { UserSession } from "../types/index.ts";
 import { ApiError } from "../../../lib/api-client.ts";
@@ -230,6 +231,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearRefreshTimer();
     };
   }, [user, scheduleProactiveRefresh, clearRefreshTimer]);
+
+  // Sync session changes from other tabs via BroadcastChannel
+  useEffect(() => {
+    const unsubscribe = subscribeToSync((session) => {
+      if (session) {
+        const normalized = withNormalizedRole(session);
+        setUser(normalized);
+        accessExpiresAtRef.current =
+          Date.now() + (session.expiresIn ?? DEFAULT_EXPIRES_IN_SEC) * 1000;
+        scheduleProactiveRefresh(session.expiresIn ?? DEFAULT_EXPIRES_IN_SEC);
+      } else {
+        clearRefreshTimer();
+        setUser(null);
+        accessExpiresAtRef.current = null;
+      }
+    });
+    return unsubscribe;
+  }, [clearRefreshTimer, scheduleProactiveRefresh]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

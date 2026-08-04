@@ -1,6 +1,7 @@
 package com.darb.controllers.v1;
 
 import com.darb.dtos.attendance.AttendanceCreateRequest;
+import com.darb.dtos.attendance.AttendanceExcuseRequest;
 import com.darb.dtos.attendance.AttendanceResponse;
 import com.darb.dtos.attendance.AttendanceUpdateRequest;
 import com.darb.dtos.common.ApiResponse;
@@ -44,8 +45,9 @@ public class AttendanceController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<PageResponse<AttendanceResponse>>> findAll(
+            Authentication authentication,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<AttendanceResponse> page = attendanceService.findAll(pageable);
+        Page<AttendanceResponse> page = attendanceService.findAll((UUID) authentication.getPrincipal(), pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<AttendanceResponse>>builder()
                 .success(true)
                 .message("Attendance records retrieved successfully")
@@ -73,12 +75,44 @@ public class AttendanceController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<AttendanceResponse>>> findByCircle(
+            Authentication authentication,
             @Parameter(description = "Circle UUID", required = true) @PathVariable UUID circleId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<AttendanceResponse> page = attendanceService.findByCircleId(circleId, pageable);
+        Page<AttendanceResponse> page = attendanceService.findByCircleId((UUID) authentication.getPrincipal(), circleId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<AttendanceResponse>>builder()
                 .success(true)
                 .message("Circle attendance retrieved successfully")
+                .data(PageResponse.<AttendanceResponse>builder()
+                        .content(page.getContent())
+                        .pageNumber(page.getNumber())
+                        .pageSize(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .last(page.isLast())
+                        .build())
+                .build());
+    }
+
+    @GetMapping("/student/{studentId}")
+    @Operation(
+            summary = "List attendance by student",
+            description = "Returns a paginated list of attendance records for a specific student. Accessible by the student themselves, their parents, teachers, and admins."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Student attendance retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid UUID format or pagination parameters"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied to this student")
+    })
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PageResponse<AttendanceResponse>>> findByStudent(
+            Authentication authentication,
+            @Parameter(description = "Student UUID", required = true) @PathVariable UUID studentId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Page<AttendanceResponse> page = attendanceService.findByStudentId((UUID) authentication.getPrincipal(), studentId, pageable);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<AttendanceResponse>>builder()
+                .success(true)
+                .message("Student attendance retrieved successfully")
                 .data(PageResponse.<AttendanceResponse>builder()
                         .content(page.getContent())
                         .pageNumber(page.getNumber())
@@ -103,11 +137,12 @@ public class AttendanceController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AttendanceResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Attendance record UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<AttendanceResponse>builder()
                 .success(true)
                 .message("Attendance record retrieved successfully")
-                .data(attendanceService.findById(id))
+                .data(attendanceService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 
@@ -126,12 +161,13 @@ public class AttendanceController {
     public ResponseEntity<ApiResponse<AttendanceResponse>> create(
             Authentication authentication,
             @Valid @RequestBody AttendanceCreateRequest request) {
-        request.setRecordedBy((UUID) authentication.getPrincipal());
+        UUID callerId = (UUID) authentication.getPrincipal();
+        request.setRecordedBy(callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<AttendanceResponse>builder()
                         .success(true)
                         .message("Attendance recorded successfully")
-                        .data(attendanceService.create(request))
+                        .data(attendanceService.create(callerId, request))
                         .build());
     }
 
@@ -149,12 +185,42 @@ public class AttendanceController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Attendance record UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody AttendanceUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<AttendanceResponse>builder()
                 .success(true)
                 .message("Attendance updated successfully")
-                .data(attendanceService.update(id, request))
+                .data(attendanceService.update(
+                        (UUID) authentication.getPrincipal(),
+                        id,
+                        request,
+                        auditReasonHeader,
+                        request.getAuditReason()))
+                .build());
+    }
+
+    @PostMapping("/{id}/excuse")
+    @PreAuthorize("hasAnyRole('STUDENT', 'PARENT')")
+    @Operation(summary = "Submit absence excuse", description = "Submit an excuse for an existing attendance record.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Excuse submitted successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request body"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Attendance record not found")
+    })
+    public ResponseEntity<ApiResponse<AttendanceResponse>> submitExcuse(
+            @Parameter(description = "Attendance record UUID", required = true) @PathVariable UUID id,
+            @Valid @RequestBody AttendanceExcuseRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        AttendanceResponse response = attendanceService.submitExcuse(id, userId, request);
+        return ResponseEntity.ok(ApiResponse.<AttendanceResponse>builder()
+                .success(true)
+                .message("Excuse submitted")
+                .data(response)
                 .build());
     }
 }

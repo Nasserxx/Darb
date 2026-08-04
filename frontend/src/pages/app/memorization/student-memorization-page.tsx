@@ -40,6 +40,7 @@ import {
 } from "@/lib/errors/map-api-error.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
+import { canManageMemorization } from "@/lib/navigation/role-permissions.ts";
 
 const GRADES = [
   "EXCELLENT",
@@ -76,9 +77,7 @@ export function StudentMemorizationPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const role = user ? normalizeApiRole(user.role) : null;
-  const canManage = role
-    ? ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"].includes(role)
-    : false;
+  const canManage = canManageMemorization(user?.role);
 
   const { data, isLoading } = useMemorizationByStudent(studentId, params);
   const { data: enrollmentsPage } = useEnrollments({ page: 0, size: 500 });

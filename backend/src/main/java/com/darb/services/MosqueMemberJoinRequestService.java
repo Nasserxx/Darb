@@ -111,6 +111,16 @@ public class MosqueMemberJoinRequestService {
         return toResponse(joinRequestRepository.save(joinRequest));
     }
 
+    @Transactional
+    public void cancelMyJoinRequest(UUID userId) {
+        MosqueMemberJoinRequest joinRequest = joinRequestRepository.findByUserIdAndStatus(
+                        userId, JoinRequestStatus.PENDING)
+                .orElseThrow(() -> new ResourceNotFoundException("MosqueJoinRequest", "userId", userId));
+
+        joinRequest.setStatus(JoinRequestStatus.CANCELLED);
+        joinRequestRepository.save(joinRequest);
+    }
+
     private void assertEligibleForJoinRequest(User user) {
         if (user.getRole() != UserRole.TEACHER && user.getRole() != UserRole.STUDENT) {
             throw new ForbiddenException("Only teachers and students can request to join a mosque");

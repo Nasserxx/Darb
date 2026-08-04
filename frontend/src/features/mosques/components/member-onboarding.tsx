@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2Icon, ClockIcon, SearchIcon } from "lucide-react";
+import { Building2Icon, ClockIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -59,6 +59,7 @@ export function MemberOnboarding({
   const [searchResults, setSearchResults] = useState<MosqueSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [defaultTab, setDefaultTab] = useState(
     isPending ? "pending" : "invite",
   );
@@ -168,6 +169,19 @@ export function MemberOnboarding({
       toast.error(error instanceof Error ? error.message : t("onboarding.error"));
     } finally {
       setIsSubmittingRequest(false);
+    }
+  }
+
+  async function handleCancelRequest() {
+    setIsCancelling(true);
+    try {
+      await mosquesApi.cancelMyJoinRequest();
+      toast.success(t("onboarding.member.cancelledRequest"));
+      await refreshProfile();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("onboarding.error"));
+    } finally {
+      setIsCancelling(false);
     }
   }
 
@@ -303,6 +317,21 @@ export function MemberOnboarding({
                     })
                   : t("onboarding.member.pendingDescriptionGeneric")}
               </AlertDescription>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isCancelling}
+                  onClick={() => void handleCancelRequest()}
+                >
+                  {isCancelling ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <XIcon data-icon="inline-start" />
+                  )}
+                  {t("onboarding.member.cancelRequest")}
+                </Button>
+              </div>
             </Alert>
           </TabsContent>
         </Tabs>

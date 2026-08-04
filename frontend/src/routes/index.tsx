@@ -298,7 +298,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedAppPage>
             <RoleRoute
-              allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT"]}
+              allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"]}
             >
               <CirclesPage />
             </RoleRoute>
@@ -363,7 +363,7 @@ export const router = createBrowserRouter([
         path: "attendance",
         element: (
           <ProtectedAppPage>
-            <RoleRoute allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"]}>
+            <RoleRoute allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"]}>
               <AttendancePage />
             </RoleRoute>
           </ProtectedAppPage>
@@ -420,7 +420,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedAppPage>
             <RoleRoute
-              allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT"]}
+              allowed={["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"]}
             >
               <AchievementsPage />
             </RoleRoute>

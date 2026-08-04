@@ -22,6 +22,10 @@ export const attendanceApi = {
     return fetchData<AttendanceResponse>(`${BASE}/${id}`);
   },
 
+  listByStudent(studentId: string, params: PageParams = {}) {
+    return fetchPage<AttendanceResponse>(`${BASE}/student/${studentId}`, params);
+  },
+
   create(body: AttendanceCreateRequest) {
     return mutateData<AttendanceResponse>(BASE, {
       method: "POST",
@@ -32,6 +36,16 @@ export const attendanceApi = {
   update(id: string, body: AttendanceUpdateRequest) {
     return mutateData<AttendanceResponse>(`${BASE}/${id}`, {
       method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  submitExcuse(
+    id: string,
+    body: { absenceReason?: string; excuseDocumentUrl?: string },
+  ) {
+    return mutateData<AttendanceResponse>(`${BASE}/${id}/excuse`, {
+      method: "POST",
       body: JSON.stringify(body),
     });
   },

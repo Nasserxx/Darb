@@ -44,11 +44,12 @@ public class GoalController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<GoalResponse>> findById(
+            Authentication authentication,
             @Parameter(description = "Goal UUID", required = true) @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.<GoalResponse>builder()
                 .success(true)
                 .message("Goal retrieved successfully")
-                .data(goalService.findById(id))
+                .data(goalService.findById((UUID) authentication.getPrincipal(), id))
                 .build());
     }
 

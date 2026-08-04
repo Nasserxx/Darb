@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+﻿import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { CopyIcon } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,8 @@ import { StatCard } from "@/components/shared/stat-card.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { stuckWorkApi } from "@/features/admin/api/stuck-work-api.ts";
+import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { mosqueAdminsApi } from "@/features/mosque-admins/api/mosque-admins-api.ts";
 import { mosquesApi } from "@/features/mosques/api/mosques-api.ts";
 import { enrollmentsApi } from "@/features/enrollments/api/enrollments-api.ts";
@@ -21,17 +23,29 @@ import { paymentKeys } from "@/features/payments/hooks/query-keys.ts";
 import { getMosquePayments, getPayments } from "@/features/payments/api/payments-api.ts";
 import { studentKeys } from "@/features/students/hooks/query-keys.ts";
 import { studentsApi } from "@/features/students/api/students-api.ts";
+import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import { CircleDot, CreditCard, GraduationCap, Users } from "lucide-react";
+import { formatShortId } from "@/lib/format/ids.ts";
 
 export function AdminDashboardPage() {
   const { t } = useTranslation("app");
+  const { user } = useAuth();
   const { locale } = useParams<{ locale: string }>();
   const localePrefix = locale ?? "en";
   const { mosqueId } = useWorkspace();
+  const role = user ? normalizeApiRole(user.role) : null;
+  const isSuperAdmin = role === "SUPER_ADMIN";
+
+  const stuckWorkQuery = useQuery({
+    queryKey: ["admin", "stuck-work"],
+    queryFn: () => stuckWorkApi.list(),
+    enabled: isSuperAdmin,
+  });
 
   const joinRequestsQuery = useQuery({
     queryKey: ["mosque-admins", "join-requests"],
     queryFn: () => mosqueAdminsApi.listJoinRequests(),
+    enabled: !isSuperAdmin,
   });
 
   const inviteCodesQuery = useQuery({
@@ -100,8 +114,8 @@ export function AdminDashboardPage() {
   return (
     <div className="auth-stagger flex flex-col gap-8">
       <PageHeader
-        title={t("admin.title")}
-        description={t("admin.description")}
+        title={t(isSuperAdmin ? "admin.fleetTitle" : "admin.title")}
+        description={t(isSuperAdmin ? "admin.fleetDescription" : "admin.description")}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" asChild>
@@ -147,6 +161,67 @@ export function AdminDashboardPage() {
         />
       </div>
 
+      {isSuperAdmin ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("admin.sections.fleetStuckWork")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              isLoading={stuckWorkQuery.isLoading}
+              data={
+                stuckWorkQuery.data
+                  ? {
+                      content: stuckWorkQuery.data,
+                      pageNumber: 0,
+                      pageSize: stuckWorkQuery.data.length,
+                      totalElements: stuckWorkQuery.data.length,
+                      totalPages: 1,
+                      last: true,
+                    }
+                  : undefined
+              }
+              emptyMessage={t("admin.stuckWork.empty")}
+              columns={[
+                {
+                  id: "kind",
+                  header: t("admin.stuckWork.kind"),
+                  cell: (row) => (
+                    <Badge variant="secondary">{row.kind.replace(/_/g, " ")}</Badge>
+                  ),
+                },
+                {
+                  id: "mosque",
+                  header: t("mosques.name"),
+                  cell: (row) => row.mosqueName,
+                },
+                {
+                  id: "summary",
+                  header: t("admin.stuckWork.summary"),
+                  cell: (row) => row.summary,
+                },
+                {
+                  id: "density",
+                  header: t("admin.stuckWork.density"),
+                  cell: (row) => row.densityScore,
+                },
+                {
+                  id: "actions",
+                  header: t("actions.view"),
+                  cell: (row) => (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to={`/${localePrefix}/mosques`}>
+                        {t("admin.stuckWork.openMosqueDesk")}
+                      </Link>
+                    </Button>
+                  ),
+                },
+              ]}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("admin.sections.pendingEnrollments")}</CardTitle>
@@ -168,14 +243,14 @@ export function AdminDashboardPage() {
                 id: "student",
                 header: t("students.title"),
                 cell: (row) => (
-                  <span className="font-mono text-xs">{row.studentId.slice(0, 8)}…</span>
+                  <span className="font-mono text-xs">{row.studentName ?? formatShortId(row.studentId)}</span>
                 ),
               },
               {
                 id: "circle",
                 header: t("circles.title"),
                 cell: (row) => (
-                  <span className="font-mono text-xs">{row.circleId.slice(0, 8)}…</span>
+                  <span className="font-mono text-xs">{row.circleName ?? formatShortId(row.circleId)}</span>
                 ),
               },
               {
@@ -231,6 +306,7 @@ export function AdminDashboardPage() {
         </CardContent>
       </Card>
 
+      {!isSuperAdmin ? (
       <Card>
         <CardHeader>
           <CardTitle>{t("admin.sections.pendingJoinRequests")}</CardTitle>
@@ -289,6 +365,8 @@ export function AdminDashboardPage() {
           />
         </CardContent>
       </Card>
+      ) : null}
     </div>
   );
 }
+

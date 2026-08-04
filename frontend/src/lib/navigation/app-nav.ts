@@ -39,7 +39,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.mosques",
     href: "/mosques",
     icon: Landmark,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
+    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"],
   },
   {
     id: "mosque-admins",
@@ -74,7 +74,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.circles",
     href: "/circles",
     icon: CircleDot,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT"],
+    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
   },
   {
     id: "enrollments",
@@ -88,14 +88,14 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.attendance",
     href: "/attendance",
     icon: UserCheck,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"],
+    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
   },
   {
     id: "achievements",
     labelKey: "nav.achievements",
     href: "/achievements",
     icon: Award,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT"],
+    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
   },
   {
     id: "messages",
@@ -137,7 +137,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.progress",
     href: "/dashboard",
     icon: BookOpen,
-    roles: ["STUDENT"],
+    roles: ["STUDENT", "PARENT"],
   },
 ];
 
@@ -158,7 +158,7 @@ export function getDefaultLandingPath(role: string): string {
     case "STUDENT":
       return "/dashboard";
     case "PARENT":
-      return "/students";
+      return "/dashboard";
     default:
       return "/dashboard";
   }

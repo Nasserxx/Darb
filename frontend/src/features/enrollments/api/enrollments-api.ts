@@ -16,6 +16,9 @@ export const enrollmentsApi = {
   list: (params: PageParams = {}) =>
     fetchPage<EnrollmentResponse>(BASE_PATH, params),
 
+  listByStudent: (studentId: string, params: PageParams = {}) =>
+    fetchPage<EnrollmentResponse>(`${BASE_PATH}/student/${studentId}`, params),
+
   getById: (id: string) =>
     fetchData<EnrollmentResponse>(`${BASE_PATH}/${id}`),
 

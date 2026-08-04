@@ -12,6 +12,7 @@ import com.darb.repositories.CircleRepository;
 import com.darb.repositories.GoalRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class GoalService {
     private final StudentRepository studentRepository;
     private final CircleRepository circleRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<GoalResponse> findAll(Pageable pageable) {
@@ -37,8 +39,10 @@ public class GoalService {
     }
 
     @Transactional(readOnly = true)
-    public GoalResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public GoalResponse findById(UUID callerId, UUID id) {
+        Goal goal = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, goal.getStudent().getId());
+        return toResponse(goal);
     }
 
     @Transactional(readOnly = true)

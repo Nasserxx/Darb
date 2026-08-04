@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AwardIcon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useQueries } from "@tanstack/react-query";
 
+import type { PageResponse } from "@/lib/types/api.ts";
 import { EmptyState } from "@/components/shared/empty-state.tsx";
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
@@ -27,6 +29,9 @@ import {
   useAchievementsByStudent,
   useCreateAchievement,
 } from "@/features/achievements/hooks/use-achievements.ts";
+import { achievementKeys } from "@/features/achievements/hooks/achievement-keys";
+import { achievementsApi } from "@/features/achievements/api/achievements-api";
+import type { AchievementResponse } from "@/features/achievements/types/index.ts";
 import {
   achievementCreateSchema,
   toAchievementCreateRequest,
@@ -42,6 +47,8 @@ import {
 } from "@/lib/errors/map-api-error.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
+import { canManageAchievements } from "@/lib/navigation/role-permissions.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 
 const ACHIEVEMENT_TYPES = [
   "MEMORIZATION",
@@ -65,15 +72,48 @@ export function AchievementsPage() {
 
   const role = user ? normalizeApiRole(user.role) : null;
   const isStudent = role === "STUDENT";
-  const canManage = role
-    ? ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"].includes(role)
-    : false;
+  const isParent = role === "PARENT";
+  const canManage = canManageAchievements(user?.role);
 
   const effectiveMosqueId =
     role === "SUPER_ADMIN" ? selectedMosqueId || mosqueId : mosqueId;
 
   const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
   const { data: studentsPage } = useStudents({ page: 0, size: 500 });
+
+  const parentStudentIds = isParent ? (profile?.parentStudentIds ?? []) : [];
+
+  const childQueries = useQueries({
+    queries: parentStudentIds.map((studentId) => ({
+      queryKey: achievementKeys.student(studentId, params),
+      queryFn: () => achievementsApi.listByStudent(studentId, params),
+      enabled: !!studentId,
+    })),
+  });
+
+  const parentData = useMemo((): PageResponse<AchievementResponse> | undefined => {
+    if (!isParent || !parentStudentIds.length) return undefined;
+    const seen = new Set<string>();
+    const items = childQueries
+      .flatMap((q) => q.data?.content ?? [])
+      .filter((a) => {
+        if (seen.has(a.id)) return false;
+        seen.add(a.id);
+        return true;
+      });
+    return items.length > 0
+      ? {
+          content: items,
+          totalElements: items.length,
+          totalPages: 1,
+          pageNumber: 0,
+          pageSize: items.length,
+          last: true,
+        }
+      : undefined;
+  }, [childQueries, isParent, parentStudentIds]);
+
+  const showMosqueAchievements = !isStudent && !isParent;
 
   const { data: studentData, isLoading: studentLoading } =
     useAchievementsByStudent(
@@ -82,14 +122,22 @@ export function AchievementsPage() {
     );
   const { data: mosqueData, isLoading: mosqueLoading } =
     useAchievementsByMosque(
-      !isStudent ? (effectiveMosqueId ?? undefined) : undefined,
+      showMosqueAchievements ? (effectiveMosqueId ?? undefined) : undefined,
       params,
     );
 
   const createAchievement = useCreateAchievement();
 
-  const achievements = isStudent ? studentData : mosqueData;
-  const isLoading = isStudent ? studentLoading : mosqueLoading;
+  const achievements = isStudent
+    ? studentData
+    : isParent
+      ? parentData
+      : mosqueData;
+  const isLoading = isStudent
+    ? studentLoading
+    : isParent
+      ? childQueries.some((q) => q.isLoading)
+      : mosqueLoading;
 
   const mosqueStudents = useMemo(
     () =>
@@ -181,7 +229,7 @@ export function AchievementsPage() {
         </FieldGroup>
       ) : null}
 
-      {!isStudent && !effectiveMosqueId ? (
+      {!isStudent && !isParent && !effectiveMosqueId ? (
         <EmptyState
           title={t("achievements.title")}
           description={t("achievements.selectMosque")}
@@ -264,7 +312,7 @@ export function AchievementsPage() {
                     <SelectContent>
                       {mosqueStudents.map((student) => (
                         <SelectItem key={student.id} value={student.id}>
-                          {student.id.slice(0, 8)}…
+                          {student.fullName ?? formatShortId(student.id)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -313,3 +361,4 @@ export function AchievementsPage() {
     </div>
   );
 }
+

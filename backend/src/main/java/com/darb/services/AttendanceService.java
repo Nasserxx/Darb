@@ -1,17 +1,25 @@
 package com.darb.services;
 
 import com.darb.dtos.attendance.AttendanceCreateRequest;
+import com.darb.dtos.attendance.AttendanceExcuseRequest;
 import com.darb.dtos.attendance.AttendanceResponse;
 import com.darb.dtos.attendance.AttendanceUpdateRequest;
 import com.darb.entities.Attendance;
 import com.darb.entities.Circle;
 import com.darb.entities.Enrollment;
 import com.darb.entities.User;
+import com.darb.entities.enums.AbsenceReason;
+import com.darb.entities.enums.AttendanceStatus;
+import com.darb.entities.enums.EnrollmentStatus;
+import com.darb.entities.enums.UserRole;
+import com.darb.exceptions.BadRequestException;
+import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.AttendanceRepository;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.EnrollmentRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,30 +38,62 @@ public class AttendanceService {
     private final EnrollmentRepository enrollmentRepository;
     private final CircleRepository circleRepository;
     private final UserRepository userRepository;
+    private final MosqueAccessService mosqueAccessService;
+    private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
-    public Page<AttendanceResponse> findAll(Pageable pageable) {
-        return attendanceRepository.findAll(pageable).map(this::toResponse);
+    public Page<AttendanceResponse> findAll(UUID callerId, Pageable pageable) {
+        return mosqueAccessService.pageForCaller(
+                callerId, pageable,
+                mosqueId -> attendanceRepository.findByCircle_MosqueId(mosqueId, pageable),
+                attendanceRepository::findAll
+        ).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public AttendanceResponse findById(UUID id) {
-        return toResponse(findEntityOrThrow(id));
+    public AttendanceResponse findById(UUID callerId, UUID id) {
+        Attendance attendance = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, attendance.getEnrollment().getStudent().getId());
+        return toResponse(attendance);
     }
 
     @Transactional(readOnly = true)
-    public Page<AttendanceResponse> findByCircleId(UUID circleId, Pageable pageable) {
+    public Page<AttendanceResponse> findByCircleId(UUID callerId, UUID circleId, Pageable pageable) {
+        Circle circle = circleRepository.findById(circleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", circleId));
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
         return attendanceRepository.findByCircleId(circleId, pageable).map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public Page<AttendanceResponse> findByStudentId(UUID callerId, UUID studentId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
+        return attendanceRepository.findByEnrollment_StudentId(studentId, pageable).map(this::toResponse);
+    }
+
     @Transactional
-    public AttendanceResponse create(AttendanceCreateRequest request) {
+    public AttendanceResponse create(UUID callerId, AttendanceCreateRequest request) {
         Enrollment enrollment = enrollmentRepository.findById(request.getEnrollmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment", "id", request.getEnrollmentId()));
         Circle circle = circleRepository.findById(request.getCircleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
         User recordedBy = userRepository.findById(request.getRecordedBy())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getRecordedBy()));
+
+        if (!enrollment.getCircle().getId().equals(circle.getId())) {
+            throw new BadRequestException("Enrollment does not belong to this circle");
+        }
+        if (enrollment.getStatus() != EnrollmentStatus.ACTIVE) {
+            throw new BadRequestException("Enrollment must be ACTIVE to record attendance");
+        }
+
+        // Verify caller is assigned to this circle (or has elevated role)
+        UserRole role = userRepository.findById(callerId).orElseThrow().getRole();
+        if (role != UserRole.SUPER_ADMIN && role != UserRole.MOSQUE_ADMIN) {
+            if (!circle.getTeacher().getUser().getId().equals(callerId)) {
+                throw new ForbiddenException("Not assigned to this circle");
+            }
+        }
 
         Attendance attendance = Attendance.builder()
                 .enrollment(enrollment)
@@ -73,8 +113,11 @@ public class AttendanceService {
     }
 
     @Transactional
-    public AttendanceResponse update(UUID id, AttendanceUpdateRequest request) {
+    public AttendanceResponse update(UUID callerId, UUID id, AttendanceUpdateRequest request,
+                                     String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
         Attendance attendance = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, attendance.getEnrollment().getStudent().getId());
 
         if (request.getStatus() != null) {
             attendance.setStatus(request.getStatus());
@@ -95,17 +138,58 @@ public class AttendanceService {
             attendance.setExcuseDocumentUrl(request.getExcuseDocumentUrl());
         }
 
+        Attendance saved = attendanceRepository.save(attendance);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    attendance.getCircle().getMosque().getId(),
+                    "ATTENDANCE_UPDATE",
+                    auditReason,
+                    "Attendance",
+                    saved.getId());
+        }
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public AttendanceResponse submitExcuse(UUID attendanceId, UUID callerId, AttendanceExcuseRequest request) {
+        Attendance attendance = findEntityOrThrow(attendanceId);
+        UUID studentId = attendance.getEnrollment().getStudent().getId();
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
+
+        if (request.getAbsenceReason() != null) {
+            attendance.setAbsenceReason(parseAbsenceReason(request.getAbsenceReason()));
+        }
+        if (request.getExcuseDocumentUrl() != null) {
+            attendance.setExcuseDocumentUrl(request.getExcuseDocumentUrl());
+        }
+        attendance.setStatus(AttendanceStatus.EXCUSED);
+
         return toResponse(attendanceRepository.save(attendance));
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
+        Attendance attendance = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessStudent(callerId, attendance.getEnrollment().getStudent().getId());
         attendanceRepository.deleteById(id);
     }
 
     private Attendance findEntityOrThrow(UUID id) {
         return attendanceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance", "id", id));
+    }
+
+    private AbsenceReason parseAbsenceReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        try {
+            return AbsenceReason.valueOf(reason.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown absence reason '{}', falling back to OTHER", reason);
+            return AbsenceReason.OTHER;
+        }
     }
 
     private AttendanceResponse toResponse(Attendance attendance) {

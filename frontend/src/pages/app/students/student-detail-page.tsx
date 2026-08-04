@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { StudentDetailCard } from "@/features/students/components/student-detail-card.tsx";
@@ -17,7 +18,7 @@ import {
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 import { canManageStudents } from "@/lib/navigation/role-permissions.ts";
-import { ChevronLeftIcon } from "lucide-react";
+import { Award, BookOpen, ChevronLeftIcon, CircleDot, MessageSquare } from "lucide-react";
 
 export function StudentDetailPage() {
   const { t } = useTranslation("app");
@@ -90,6 +91,52 @@ export function StudentDetailPage() {
         </Link>
       </Button>
       <StudentDetailCard student={student} />
+
+      <div className="flex flex-col gap-4">
+        <h3 className="font-serif text-lg font-semibold">{t("studentRecord.title")}</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            {
+              to: `/${localePrefix}/memorization/student/${student.id}`,
+              icon: BookOpen,
+              title: t("studentRecord.memorization"),
+              description: t("studentRecord.memorizationDescription"),
+            },
+            {
+              to: `/${localePrefix}/goals/student/${student.id}`,
+              icon: CircleDot,
+              title: t("studentRecord.goals"),
+              description: t("studentRecord.goalsDescription"),
+            },
+            {
+              to: `/${localePrefix}/achievements`,
+              icon: Award,
+              title: t("studentRecord.achievements"),
+              description: t("studentRecord.achievementsDescription"),
+            },
+            {
+              to: `/${localePrefix}/messages`,
+              icon: MessageSquare,
+              title: t("studentRecord.messages"),
+              description: t("studentRecord.messagesDescription"),
+            },
+          ].map((link) => (
+            <Link key={link.to} to={link.to}>
+              <Card className="h-full transition-colors hover:bg-muted/40">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <link.icon className="text-primary" />
+                    {link.title}
+                  </CardTitle>
+                  <CardDescription>{link.description}</CardDescription>
+                </CardHeader>
+                <CardContent />
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {canWrite ? (
         <>
           <StudentFormDialog

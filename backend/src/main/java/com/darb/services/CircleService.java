@@ -7,10 +7,12 @@ import com.darb.entities.Circle;
 import com.darb.entities.Mosque;
 import com.darb.entities.Teacher;
 import com.darb.entities.enums.CircleStatus;
+import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.TeacherRepository;
+import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +31,23 @@ public class CircleService {
     private final CircleRepository circleRepository;
     private final MosqueRepository mosqueRepository;
     private final TeacherRepository teacherRepository;
+    private final UserRepository userRepository;
     private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<CircleResponse> findAll(UUID callerId, Pageable pageable) {
+        UserRole role = userRepository.findById(callerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", callerId))
+                .getRole();
+
+        if (role == UserRole.TEACHER) {
+            Teacher teacher = teacherRepository.findByUserId(callerId).stream()
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Teacher", "userId", callerId));
+            return circleRepository.findByTeacherId(teacher.getId(), pageable)
+                    .map(this::toResponse);
+        }
+
         return mosqueAccessService.pageForCaller(
                 callerId,
                 pageable,
@@ -135,6 +150,7 @@ public class CircleService {
                 .id(circle.getId())
                 .mosqueId(circle.getMosque().getId())
                 .teacherId(circle.getTeacher().getId())
+                .teacherName(circle.getTeacher().getUser().getFullName())
                 .name(circle.getName())
                 .level(circle.getLevel())
                 .type(circle.getType())
@@ -150,3 +166,4 @@ public class CircleService {
                 .build();
     }
 }
+

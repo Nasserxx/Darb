@@ -29,4 +29,7 @@ public class MosqueAdminCreateRequest {
 
     @Schema(description = "User ID who is assigning this admin")
     private UUID assignedBy;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

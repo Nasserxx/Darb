@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -24,16 +24,24 @@ function formatSchedule(circle: CircleResponse): string {
 
 type CirclesTableProps = {
   canWrite: boolean;
+  /** Optional set of circle IDs to filter by (e.g. for student enrollment filtering) */
+  circleIds?: Set<string>;
 };
 
-export function CirclesTable({ canWrite }: CirclesTableProps) {
+export function CirclesTable({ canWrite, circleIds }: CirclesTableProps) {
   const { t } = useTranslation("app");
   const { params, setPage } = usePagination();
-  const { data, isLoading } = useCircles(params);
+  const { data, isLoading } = useCircles(circleIds ? { page: 0, size: 500 } : params);
   const deleteMutation = useDeleteCircle();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CircleResponse | null>(null);
   const [deleting, setDeleting] = useState<CircleResponse | null>(null);
+
+  const filteredData = useMemo(() => {
+    if (!data || !circleIds) return data;
+    const filtered = data.content.filter((c) => circleIds.has(c.id));
+    return { ...data, content: filtered, totalElements: filtered.length };
+  }, [data, circleIds]);
 
   async function handleDelete() {
     if (!deleting) return;
@@ -49,7 +57,7 @@ export function CirclesTable({ canWrite }: CirclesTableProps) {
   return (
     <>
       <DataTable
-        data={data}
+        data={filteredData}
         isLoading={isLoading}
         onPageChange={setPage}
         columns={[

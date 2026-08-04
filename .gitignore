@@ -33,6 +33,10 @@ logs/
 *.tar.gz
 *.rar
 
+# Local memory MCP (personal SQLite; keep out of git)
+.local-memory-mcp/
+.memorybox/
+
 # Legacy / tooling
 *.ctxt
 .mtj.tmp/
@@ -43,3 +47,4 @@ graphify-out/
 .venv/
 .graphify_*
 node_modules
+.superpowers

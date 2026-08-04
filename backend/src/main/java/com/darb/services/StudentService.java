@@ -54,6 +54,13 @@ public class StudentService {
         return toResponse(student);
     }
 
+    @Transactional(readOnly = true)
+    public Student findByUserId(UUID userId) {
+        return studentRepository.findByUserId(userId).stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "userId", userId));
+    }
+
     @Transactional
     public StudentResponse create(UUID callerId, StudentCreateRequest request) {
         User user = userRepository.findById(request.getUserId())
@@ -62,12 +69,17 @@ public class StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
         mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
 
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+
         Student student = Student.builder()
                 .user(user)
                 .mosque(mosque)
                 .nationalId(request.getNationalId())
                 .medicalNotes(request.getMedicalNotes())
                 .memorizedJuz(request.getMemorizedJuz())
+                .parentInviteCode(request.getParentInviteCode())
                 .totalAbsences(0)
                 .totalLateArrivals(0)
                 .status(EnrollmentStatus.ACTIVE)
@@ -141,11 +153,11 @@ public class StudentService {
         if (request.getMemorizedJuz() != null) {
             student.setMemorizedJuz(request.getMemorizedJuz());
         }
-        if (request.getTotalAbsences() != null) {
-            student.setTotalAbsences(request.getTotalAbsences());
+        if (request.getParentInviteCode() != null) {
+            student.setParentInviteCode(request.getParentInviteCode());
         }
-        if (request.getTotalLateArrivals() != null) {
-            student.setTotalLateArrivals(request.getTotalLateArrivals());
+        if (request.getFullName() != null) {
+            student.getUser().setFullName(request.getFullName());
         }
 
         return toResponse(studentRepository.save(student));
@@ -168,6 +180,7 @@ public class StudentService {
         return StudentResponse.builder()
                 .id(student.getId())
                 .userId(student.getUser().getId())
+                .fullName(student.getUser().getFullName())
                 .mosqueId(student.getMosque().getId())
                 .nationalId(student.getNationalId())
                 .medicalNotes(student.getMedicalNotes())
@@ -176,6 +189,7 @@ public class StudentService {
                 .totalLateArrivals(student.getTotalLateArrivals())
                 .status(student.getStatus())
                 .enrolledAt(student.getEnrolledAt())
+                .parentInviteCode(student.getParentInviteCode())
                 .build();
     }
 }

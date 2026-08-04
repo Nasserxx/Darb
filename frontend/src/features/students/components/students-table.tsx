@@ -59,7 +59,7 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
                 to={`/${localePrefix}/students/${row.id}`}
                 className="font-medium text-primary hover:underline"
               >
-                {formatShortId(row.id)}
+                {row.fullName ?? formatShortId(row.id)}
               </Link>
             ),
           },

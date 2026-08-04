@@ -8,6 +8,8 @@ export function hasRole(userRole: string | undefined, allowed: UserRole[]): bool
 
 export const ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN", "MOSQUE_ADMIN"];
 
+export const STAFF_ROLES: UserRole[] = [...ADMIN_ROLES, "TEACHER"];
+
 export function canManageStudents(userRole: string | undefined): boolean {
   return hasRole(userRole, ADMIN_ROLES);
 }
@@ -21,5 +23,21 @@ export function canManageCircles(userRole: string | undefined): boolean {
 }
 
 export function canManageEnrollments(userRole: string | undefined): boolean {
-  return hasRole(userRole, [...ADMIN_ROLES, "TEACHER"]);
+  return hasRole(userRole, STAFF_ROLES);
+}
+
+export function canMarkAttendance(userRole: string | undefined): boolean {
+  return hasRole(userRole, STAFF_ROLES);
+}
+
+export function canManageAchievements(userRole: string | undefined): boolean {
+  return hasRole(userRole, STAFF_ROLES);
+}
+
+export function canManageMemorization(userRole: string | undefined): boolean {
+  return hasRole(userRole, STAFF_ROLES);
+}
+
+export function canManageGoals(userRole: string | undefined): boolean {
+  return hasRole(userRole, STAFF_ROLES);
 }

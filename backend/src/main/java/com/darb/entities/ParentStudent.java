@@ -2,6 +2,7 @@ package com.darb.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -27,6 +28,10 @@ public class ParentStudent extends BaseAuditableEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mosque_id")
+    private Mosque mosque;
 
     @Column(length = 30)
     private String relationship;

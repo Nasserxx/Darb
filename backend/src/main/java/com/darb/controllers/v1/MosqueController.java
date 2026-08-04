@@ -122,6 +122,18 @@ public class MosqueController {
                         .build());
     }
 
+    @DeleteMapping("/join-requests/my")
+    @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<Void>> cancelMyJoinRequest(
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        joinRequestService.cancelMyJoinRequest(userId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Join request cancelled")
+                .build());
+    }
+
     @GetMapping("/join/preview")
     @Operation(
             summary = "Preview mosque by invite code",

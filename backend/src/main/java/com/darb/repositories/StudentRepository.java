@@ -17,4 +17,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID>, JpaSpec
     Page<Student> findByMosqueId(UUID mosqueId, Pageable pageable);
     List<Student> findByStatus(EnrollmentStatus status);
     List<Student> findByStatusNot(EnrollmentStatus status);
+
+    java.util.Optional<Student> findByParentInviteCode(String parentInviteCode);
 }
