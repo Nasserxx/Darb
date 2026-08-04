@@ -1,0 +1,334 @@
+{
+  "reportTitle": "Darb Platform — UX Gap Analysis",
+  "date": "2026-07-24",
+  "reviewer": "UX Analyst (MOSQUE_ADMIN / SUPER_ADMIN role-play)",
+  "totalGapsFound": 27,
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "area": "ADMIN_ONBOARDING",
+      "severity": "HIGH",
+      "title": "Registration has no invite code field for MOSQUE_ADMIN",
+      "description": "When a new MOSQUE_ADMIN registers via /register, there is no way to input an admin invite code during registration. The user must first register, then go through a separate onboarding flow. This creates a two-step registration + onboarding process that could be streamlined.",
+      "impact": "Friction for new mosque admins who already have an invite code",
+      "affectedFiles": [
+        "frontend/src/pages/auth/register-page.tsx",
+        "frontend/src/pages/app/onboarding-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-002",
+      "area": "ADMIN_ONBOARDING",
+      "severity": "CRITICAL",
+      "title": "No way for existing mosque admin to share the admin invite code before onboarding completes",
+      "description": "The admin invite code is generated only when a mosque is first created via the onboard endpoint. It's displayed ONCE on the success screen after creation. If the admin navigates away before copying it, there is no other UI to retrieve it until they reach the dashboard. Other admins cannot join this mosque because they need this code.",
+      "impact": "If the primary admin loses their invite code, no other admins can join the mosque",
+      "affectedFiles": [
+        "frontend/src/features/mosques/components/mosque-admin-onboarding.tsx",
+        "backend/src/main/java/com/darb/services/MosqueService.java"
+      ]
+    },
+    {
+      "id": "GAP-003",
+      "area": "ADMIN_ONBOARDING",
+      "severity": "HIGH",
+      "title": "No 'first mosque' bootstrap flow if no mosque exists and super admin has not created one",
+      "description": "If the platform is fresh with zero mosques, a new MOSQUE_ADMIN can create one via onboarding. But there is no guidance, wizard, or explanation for the admin about what to do next after creating the first mosque (invite teachers, create circles, etc.). The dashboard shows empty stats with no onboarding checklist.",
+      "impact": "New mosque admins have no guided setup flow after first login",
+      "affectedFiles": [
+        "frontend/src/pages/app/onboarding-page.tsx",
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-004",
+      "area": "ADMIN_ONBOARDING",
+      "severity": "HIGH",
+      "title": "Parent onboarding shows students as truncated UUIDs with no search",
+      "description": "When a PARENT goes through onboarding, they must select their child from a dropdown. The dropdown shows students as truncated UUIDs (e.g. 'a1b2c3d4…') with no student name, no search, and no filter. If there are more than a few students, this is completely unusable.",
+      "impact": "Parents cannot identify their child in the dropdown to complete onboarding",
+      "affectedFiles": [
+        "frontend/src/pages/app/onboarding-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-005",
+      "area": "ADMIN_ONBOARDING",
+      "severity": "MEDIUM",
+      "title": "No PARENT invite code flow",
+      "description": "Parents can only be linked to existing students via the Parent-Student linking page or during onboarding. There is no invite code mechanism for parents to join a mosque independently — they must either be manually linked by an admin or know a student who already exists.",
+      "impact": "Parents cannot self-serve joining a mosque",
+      "affectedFiles": [
+        "frontend/src/pages/app/onboarding-page.tsx",
+        "frontend/src/features/mosques/components/member-onboarding.tsx"
+      ]
+    },
+    {
+      "id": "GAP-006",
+      "area": "ADMIN_DASHBOARD",
+      "severity": "MEDIUM",
+      "title": "Admin dashboard missing teacher count stat",
+      "description": "The dashboard shows 4 stat cards: students, circles, pending enrollments, overdue payments. There is no stat card for total teachers. An admin cannot quickly see how many teachers are in their mosque.",
+      "impact": "Admin lacks quick visibility into teacher headcount",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-007",
+      "area": "ADMIN_DASHBOARD",
+      "severity": "MEDIUM",
+      "title": "Admin dashboard missing pending join requests count stat",
+      "description": "Pending join requests from teachers/students are shown in a full table at the bottom of the dashboard. But there is no stat card showing the count, so an admin cannot see at a glance whether there are pending approvals needed.",
+      "impact": "Pending requests are easily overlooked",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-008",
+      "area": "ADMIN_DASHBOARD",
+      "severity": "LOW",
+      "title": "No 'Add Teacher' quick action button on dashboard",
+      "description": "The dashboard has quick action buttons for 'Add Student', 'Create Circle', and 'Record Payment'. There is no 'Add Teacher' button even though the /teachers page exists.",
+      "impact": "Inconsistent quick action coverage; admin must navigate manually",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-009",
+      "area": "ADMIN_DASHBOARD",
+      "severity": "LOW",
+      "title": "No recent activity feed on dashboard",
+      "description": "The dashboard shows static data (stats, pending enrollments, invite codes, join requests). There is no timeline or activity feed showing recent events (new enrollments, payments recorded, circles created, etc.).",
+      "impact": "Admin cannot quickly see what's changed since last login",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-010",
+      "area": "DATA_PRESENTATION",
+      "severity": "CRITICAL",
+      "title": "All tables show truncated UUIDs instead of human-readable identifiers",
+      "description": "Throughout the application, entities (students, teachers, circles, enrollments) are identified by truncated UUIDs (first 8 characters). This affects the admin dashboard pending enrollments table, the enrollments page, the students table, the teachers list, and the mosque-admins list. There is no student name, teacher name, circle name, or mosque name shown in these tables.",
+      "impact": "Admins cannot perform any identification task. They cannot tell which student requested which enrollment, which circle is which, or who joined.",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx",
+        "frontend/src/features/enrollments/components/enrollments-table.tsx",
+        "frontend/src/features/students/components/students-table.tsx",
+        "frontend/src/features/teachers/components/teachers-list.tsx",
+        "frontend/src/features/mosque-admins/components/mosque-admins-list.tsx",
+        "frontend/src/pages/app/payments/payments-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-011",
+      "area": "DATA_PRESENTATION",
+      "severity": "CRITICAL",
+      "title": "Enrollment list returns ALL enrollments system-wide with no mosque filter",
+      "description": "The backend `EnrollmentService.findAll()` calls `enrollmentRepository.findAll()` without any filtering by mosque. This means a MOSQUE_ADMIN (who should only see their own mosque's data) sees enrollments from ALL mosques. This is both a data privacy issue and a usability problem.",
+      "impact": "Mosque admins can see other mosques' enrollment data",
+      "affectedFiles": [
+        "backend/src/main/java/com/darb/services/EnrollmentService.java",
+        "backend/src/main/java/com/darb/controllers/v1/EnrollmentController.java"
+      ]
+    },
+    {
+      "id": "GAP-012",
+      "area": "TEACHER_CREATE",
+      "severity": "CRITICAL",
+      "title": "Creating a teacher requires manually typing a user UUID",
+      "description": "The Teacher create form has a 'userId' field that expects a raw UUID string. There is no user search, no autocomplete, no dropdown. The admin must know the exact UUID of the user who should become a teacher. Similarly, the 'mosqueId' field is a free-text dropdown but still shows UUIDs.",
+      "impact": "Practically impossible to use without memorized UUIDs or a separate query tool",
+      "affectedFiles": [
+        "frontend/src/features/teachers/components/teacher-form-dialog.tsx",
+        "frontend/src/features/teachers/schemas/teacher-create.schema.ts"
+      ]
+    },
+    {
+      "id": "GAP-013",
+      "area": "STUDENT_CREATE",
+      "severity": "CRITICAL",
+      "title": "Creating a student requires manually typing a user UUID",
+      "description": "Same as GAP-012 but for students. The Student create form requires a 'userId' field as a raw UUID text input. The 'mosqueId' defaults to the admin's mosque but is also a text input expecting a UUID.",
+      "impact": "Practically impossible to use without known UUIDs",
+      "affectedFiles": [
+        "frontend/src/features/students/components/student-form-dialog.tsx",
+        "frontend/src/features/students/schemas/student.schema.ts"
+      ]
+    },
+    {
+      "id": "GAP-014",
+      "area": "PARENT_STUDENT_LINK",
+      "severity": "CRITICAL",
+      "title": "Parent-student linking requires raw UUIDs for both parent user and student",
+      "description": "The ParentStudent create form requires both 'parentUserId' and 'studentId' as raw UUID text inputs. There is no way to search for users by name or students by name.",
+      "impact": "Admins cannot complete parent-student linking in practice",
+      "affectedFiles": [
+        "frontend/src/features/parent-students/components/parent-student-form-dialog.tsx"
+      ]
+    },
+    {
+      "id": "GAP-015",
+      "area": "CIRCLE_CREATE",
+      "severity": "CRITICAL",
+      "title": "Circle creation requires raw teacher UUID",
+      "description": "The Circle create form has a 'teacherId' field that is a plain text input expecting a UUID. There is no dropdown to select from available teachers in the mosque.",
+      "impact": "Admin cannot assign a teacher to a circle without knowing the teacher's UUID",
+      "affectedFiles": [
+        "frontend/src/features/circles/components/circle-form-dialog.tsx"
+      ]
+    },
+    {
+      "id": "GAP-016",
+      "area": "BACKEND",
+      "severity": "CRITICAL",
+      "title": "No user search/search-by-name API endpoint exists",
+      "description": "There is no backend endpoint to search users by name, email, or role. All admin-facing create forms require raw UUIDs, but there is no way to look up those UUIDs from within the application.",
+      "impact": "Fundamental blocker for all user-facing create flows (teachers, students, parents, admins)",
+      "affectedFiles": [
+        "backend/src/main/java/com/darb/controllers/v1/",
+        "frontend/src/features/teachers/components/teacher-form-dialog.tsx",
+        "frontend/src/features/students/components/student-form-dialog.tsx",
+        "frontend/src/features/parent-students/components/parent-student-form-dialog.tsx",
+        "frontend/src/features/circles/components/circle-form-dialog.tsx"
+      ]
+    },
+    {
+      "id": "GAP-017",
+      "area": "INVITE_CODES",
+      "severity": "MEDIUM",
+      "title": "No UI to regenerate/reset invite codes",
+      "description": "The admin dashboard displays invite codes but has no 'regenerate' button. The backend has no endpoint for explicit regeneration (only auto-generates missing ones on read). If a code is compromised, there is no way to rotate it.",
+      "impact": "Compromised invite codes cannot be rotated",
+      "affectedFiles": [
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx",
+        "backend/src/main/java/com/darb/services/MosqueService.java",
+        "backend/src/main/java/com/darb/controllers/v1/MosqueController.java"
+      ]
+    },
+    {
+      "id": "GAP-018",
+      "area": "INVITE_CODES",
+      "severity": "MEDIUM",
+      "title": "No invite code management in mosque edit/ detail view",
+      "description": "Invite codes are only shown on the admin dashboard. If a mosque admin goes to the /mosques page (which lists all mosques), there is no way to view or manage invite codes for their mosque from there.",
+      "impact": "Limited discoverability of invite code management",
+      "affectedFiles": [
+        "frontend/src/features/mosques/components/mosques-list.tsx",
+        "frontend/src/features/mosques/api/mosques-api.ts"
+      ]
+    },
+    {
+      "id": "GAP-019",
+      "area": "SUPER_ADMIN",
+      "severity": "MEDIUM",
+      "title": "Super admin cannot generate invite codes for a specific mosque",
+      "description": "The super admin can create mosques but has no UI to generate or retrieve invite codes for those mosques. The only way to get invite codes is to log in as the mosque admin and view the dashboard. The super admin needs this capability to bootstrap new mosques.",
+      "impact": "Super admin must rely on mosque admin to provide invite codes",
+      "affectedFiles": [
+        "frontend/src/pages/app/mosques/mosques-page.tsx",
+        "frontend/src/features/mosques/components/mosque-form-dialog.tsx",
+        "backend/src/main/java/com/darb/controllers/v1/MosqueController.java"
+      ]
+    },
+    {
+      "id": "GAP-020",
+      "area": "SUPER_ADMIN",
+      "severity": "LOW",
+      "title": "Mosques list page shows no per-mosque statistics",
+      "description": "The /mosques page shows a table of all mosques with name, city, phone, and status. It does not show any per-mosque statistics (number of students, teachers, circles, active enrollments) that would help a super admin understand each mosque's activity level.",
+      "impact": "Super admin cannot triage mosques by activity or size",
+      "affectedFiles": [
+        "frontend/src/features/mosques/components/mosques-list.tsx"
+      ]
+    },
+    {
+      "id": "GAP-021",
+      "area": "SUPER_ADMIN",
+      "severity": "LOW",
+      "title": "No super admin dashboard",
+      "description": "The super admin lands on /mosques as their default page. There is no super admin dashboard showing system-wide stats (total mosques, total users, total teachers, total students, total payments, recent activity). The /admin route with RoleRoute(['SUPER_ADMIN', 'MOSQUE_ADMIN']) shows the same admin dashboard as a mosque admin.",
+      "impact": "Super admin has no high-level system overview",
+      "affectedFiles": [
+        "frontend/src/lib/navigation/app-nav.ts",
+        "frontend/src/pages/app/admin/admin-dashboard-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-022",
+      "area": "NAVIGATION",
+      "severity": "MEDIUM",
+      "title": "Mosque admin sees 'Mosques' in nav but cannot edit other mosques",
+      "description": "The 'Mosques' nav item is visible to MOSQUE_ADMIN, but the mosques list only allows editing the admin's own mosque. Table actions show edit for the admin's mosque, but also show delete (which requires SUPER_ADMIN). The UI is confusing.",
+      "impact": "Navigation shows irrelevant/confusing options for mosque admins",
+      "affectedFiles": [
+        "frontend/src/features/mosques/components/mosques-list.tsx",
+        "frontend/src/lib/navigation/app-nav.ts"
+      ]
+    },
+    {
+      "id": "GAP-023",
+      "area": "NAVIGATION",
+      "severity": "LOW",
+      "title": "'Mosques' nav item shown to STUDENT and PARENT roles who don't need it",
+      "description": "The 'Mosques' nav item is configured for all roles: SUPER_ADMIN, MOSQUE_ADMIN, TEACHER, STUDENT, PARENT. Students and parents are already linked to a mosque via their profile — they don't need to see a list of all mosques.",
+      "impact": "Unnecessary navigation bloat for student/parent users",
+      "affectedFiles": [
+        "frontend/src/lib/navigation/app-nav.ts"
+      ]
+    },
+    {
+      "id": "GAP-024",
+      "area": "NAVIGATION",
+      "severity": "LOW",
+      "title": "No memorization or goals nav items despite existing pages",
+      "description": "The /memorization/student/:studentId and /goals/student/:studentId pages exist in routes but have no corresponding nav items. Users must know the URL to access them.",
+      "impact": "Hidden feature discovery",
+      "affectedFiles": [
+        "frontend/src/lib/navigation/app-nav.ts",
+        "frontend/src/routes/index.tsx"
+      ]
+    },
+    {
+      "id": "GAP-025",
+      "area": "SECURITY",
+      "severity": "HIGH",
+      "title": "Enrollment and Circle services return all data without mosque scoping",
+      "description": "The `EnrollmentService.findAll()` and `CircleController.findAll()` methods return ALL records without filtering by the caller's mosque. While CircleService uses pageForCaller pattern (which does filter), the EnrollmentService does not. The CircleController's findAll has @PreAuthorize('isAuthenticated()') meaning any authenticated user (including students from other mosques) can list all circles.",
+      "impact": "Cross-mosque data visibility leak for circulations and enrollments",
+      "affectedFiles": [
+        "backend/src/main/java/com/darb/services/EnrollmentService.java",
+        "backend/src/main/java/com/darb/controllers/v1/CircleController.java",
+        "backend/src/main/java/com/darb/controllers/v1/EnrollmentController.java"
+      ]
+    },
+    {
+      "id": "GAP-026",
+      "area": "PAYMENTS",
+      "severity": "MEDIUM",
+      "title": "Payment create dialog shows students and circles as truncated UUIDs",
+      "description": "In the payment creation dialog, the student and circle selectors show truncated UUIDs instead of meaningful identifiers (student name/ID, circle name). An admin cannot tell which student they're creating a payment for.",
+      "impact": "Admin cannot identify the correct student when creating payments",
+      "affectedFiles": [
+        "frontend/src/pages/app/payments/payments-page.tsx"
+      ]
+    },
+    {
+      "id": "GAP-027",
+      "area": "BUG",
+      "severity": "CRITICAL",
+      "title": "Frontend does not send 'assignedBy' when creating mosque admin, causing 500 error",
+      "description": "The backend MosqueAdminCreateRequest DTO requires an 'assignedBy' field (the UUID of the admin who is assigning the new admin). The frontend's toMosqueAdminCreateRequestBody() does not include this field at all. The backend calls userRepository.findById(request.getAssignedBy()) which throws ResourceNotFoundException when assignedBy is null. This means the 'Create Mosque Admin' feature is broken — any attempt to assign a new admin will result in a 500 error.",
+      "impact": "Super admin cannot create mosque admins through the UI",
+      "affectedFiles": [
+        "frontend/src/features/mosque-admins/schemas/mosque-admin-create.schema.ts",
+        "frontend/src/features/mosque-admins/components/mosque-admin-form-dialog.tsx",
+        "backend/src/main/java/com/darb/dtos/mosqueadmin/MosqueAdminCreateRequest.java",
+        "backend/src/main/java/com/darb/services/MosqueAdminService.java"
+      ]
+    }
+  ]
+}

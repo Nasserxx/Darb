@@ -719,5 +719,7 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  // useSidebar is a hook, not a component; co-located with the sidebar context contract
+  // eslint-disable-next-line react-refresh/only-export-components
   useSidebar,
 }

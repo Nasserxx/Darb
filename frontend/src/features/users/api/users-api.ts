@@ -4,7 +4,11 @@ import {
   fetchPage,
   mutateData,
 } from "@/lib/api/pagination.ts";
-import type { ApiResponse, PageParams } from "@/lib/types/api.ts";
+import type {
+  ApiResponse,
+  PageParams,
+  PageResponse,
+} from "@/lib/types/api.ts";
 
 import type { UserResponse, UserUpdateRequest } from "../types/index.ts";
 

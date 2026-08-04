@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -67,7 +67,9 @@ export function CircleAttendancePage() {
   const canMark = canMarkAttendance(user?.role);
 
   const [sessionDate, setSessionDate] = useState(todayLocalDate);
-  const [roster, setRoster] = useState<RosterRow[]>([]);
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, AttendanceStatus>
+  >({});
   const [isSaving, setIsSaving] = useState(false);
 
   const { data: circle, isLoading: circleLoading } = useCircle(circleId ?? "", {
@@ -110,30 +112,28 @@ export function CircleAttendancePage() {
     [attendancePage?.content, sessionDate],
   );
 
-  useEffect(() => {
-    const nextRoster: RosterRow[] = activeEnrollments.map((enrollment) => {
-      const existing = attendanceForDate.find(
-        (record) => record.enrollmentId === enrollment.id,
-      );
-      return {
-        enrollmentId: enrollment.id,
-        studentId: enrollment.studentId,
-        status: existing?.status ?? "PRESENT",
-        attendanceId: existing?.id,
-      };
-    });
-    setRoster(nextRoster);
-  }, [activeEnrollments, attendanceForDate]);
+  const roster = useMemo<RosterRow[]>(
+    () =>
+      activeEnrollments.map((enrollment) => {
+        const existing = attendanceForDate.find(
+          (record) => record.enrollmentId === enrollment.id,
+        );
+        return {
+          enrollmentId: enrollment.id,
+          studentId: enrollment.studentId,
+          status:
+            statusOverrides[enrollment.id] ?? existing?.status ?? "PRESENT",
+          attendanceId: existing?.id,
+        };
+      }),
+    [activeEnrollments, attendanceForDate, statusOverrides],
+  );
 
   const isLoading =
     circleLoading || enrollmentsLoading || studentsLoading || attendanceLoading;
 
   function updateRowStatus(enrollmentId: string, status: AttendanceStatus) {
-    setRoster((prev) =>
-      prev.map((row) =>
-        row.enrollmentId === enrollmentId ? { ...row, status } : row,
-      ),
-    );
+    setStatusOverrides((prev) => ({ ...prev, [enrollmentId]: status }));
   }
 
   async function handleSave() {

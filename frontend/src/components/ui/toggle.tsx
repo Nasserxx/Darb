@@ -40,4 +40,6 @@ function Toggle({
   )
 }
 
+// toggleVariants is a cva() style config, not a component; allowConstantExport only covers literals
+// eslint-disable-next-line react-refresh/only-export-components
 export { Toggle, toggleVariants }

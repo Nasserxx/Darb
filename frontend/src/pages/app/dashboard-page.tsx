@@ -42,7 +42,7 @@ export function DashboardPage() {
 
   const role = (user?.role ?? "").toUpperCase().replace(/-/g, "_");
 
-  let links: DashboardLink[] = [];
+  let links: DashboardLink[];
 
   if (role === "TEACHER") {
     links = [

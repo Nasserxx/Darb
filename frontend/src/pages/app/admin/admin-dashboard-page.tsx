@@ -208,7 +208,7 @@ export function AdminDashboardPage() {
                 {
                   id: "actions",
                   header: t("actions.view"),
-                  cell: (row) => (
+                  cell: () => (
                     <Button size="sm" variant="outline" asChild>
                       <Link to={`/${localePrefix}/mosques`}>
                         {t("admin.stuckWork.openMosqueDesk")}

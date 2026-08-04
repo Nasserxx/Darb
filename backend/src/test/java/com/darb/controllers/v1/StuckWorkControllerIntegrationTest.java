@@ -14,8 +14,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,14 +59,18 @@ class StuckWorkControllerIntegrationTest extends PostgresIntegrationTestBase {
         createJoinRequest("teacher-a-stuck-" + UUID.randomUUID() + "@test.darb", mosqueAId);
         createJoinRequest("teacher-b-stuck-" + UUID.randomUUID() + "@test.darb", mosqueBId);
 
-        mockMvc.perform(get("/api/v1/admin/stuck-work")
+        MvcResult stuckWorkResult = mockMvc.perform(get("/api/v1/admin/stuck-work")
                         .header("Authorization", "Bearer " + superAdminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[0].kind").value("PENDING_JOIN"))
-                .andExpect(jsonPath("$.data[0].mosqueName").exists())
-                .andExpect(jsonPath("$.data[0].densityScore").value(1));
+                .andReturn();
+
+        // ponytail: one shared container across test classes can leave other pending joins in the
+        // DB, so locate this test's own items instead of asserting an exact global count
+        List<Map<String, Object>> stuckWorkData = com.jayway.jsonpath.JsonPath.read(
+                stuckWorkResult.getResponse().getContentAsString(), "$.data");
+        assertPendingJoin(stuckWorkData, mosqueAId, "Mosque Alpha Stuck");
+        assertPendingJoin(stuckWorkData, mosqueBId, "Mosque Beta Stuck");
     }
 
     @Test
@@ -153,5 +160,15 @@ class StuckWorkControllerIntegrationTest extends PostgresIntegrationTestBase {
                                 }
                                 """.formatted(mosqueId)))
                 .andExpect(status().isCreated());
+    }
+
+    private void assertPendingJoin(List<Map<String, Object>> stuckWorkData, UUID mosqueId, String mosqueName) {
+        List<Map<String, Object>> matches = stuckWorkData.stream()
+                .filter(item -> mosqueId.toString().equals(item.get("mosqueId")))
+                .toList();
+        assertEquals(1, matches.size(), "expected exactly one pending join for " + mosqueName);
+        assertEquals("PENDING_JOIN", matches.get(0).get("kind"));
+        assertEquals(mosqueName, matches.get(0).get("mosqueName"));
+        assertEquals(1, matches.get(0).get("densityScore"));
     }
 }

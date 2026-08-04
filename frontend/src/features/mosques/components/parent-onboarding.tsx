@@ -39,22 +39,24 @@ export function ParentOnboarding({ onComplete }: ParentOnboardingProps) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDebouncedCode(inviteCode.trim());
+      const code = inviteCode.trim();
+      setDebouncedCode(code);
+      if (code.length < 8) {
+        setPreview(null);
+        setPreviewError(false);
+        setPreviewLoading(false);
+      } else {
+        setPreviewError(false);
+        setPreviewLoading(true);
+      }
     }, 400);
     return () => window.clearTimeout(timer);
   }, [inviteCode]);
 
   useEffect(() => {
-    if (debouncedCode.length < 8) {
-      setPreview(null);
-      setPreviewError(false);
-      return;
-    }
+    if (debouncedCode.length < 8) return;
 
     let cancelled = false;
-    setPreviewLoading(true);
-    setPreviewError(false);
-
     void parentStudentsApi
       .previewJoin(debouncedCode)
       .then((data) => {

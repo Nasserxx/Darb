@@ -26,3 +26,33 @@ export interface CircleResponse {
   monthlyFee: BigDecimal | null;
   createdAt: Instant;
 }
+
+export interface CircleCreateRequest {
+  mosqueId: Uuid;
+  teacherId: Uuid;
+  name: string;
+  level: CircleLevel;
+  type: CircleType;
+  status?: CircleStatus;
+  capacity?: number;
+  startTime?: LocalTime;
+  endTime?: LocalTime;
+  daysOfWeek?: string;
+  roomOrLink?: string;
+  lateThresholdMinutes?: number;
+  monthlyFee?: BigDecimal;
+}
+
+export interface CircleUpdateRequest {
+  name?: string;
+  level?: CircleLevel;
+  type?: CircleType;
+  status?: CircleStatus;
+  capacity?: number;
+  startTime?: LocalTime;
+  endTime?: LocalTime;
+  daysOfWeek?: string;
+  roomOrLink?: string;
+  lateThresholdMinutes?: number;
+  monthlyFee?: BigDecimal;
+}

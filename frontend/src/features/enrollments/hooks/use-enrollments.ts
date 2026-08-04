@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { PageParams, PageResponse } from "@/lib/types/api.ts";
+import type { PageParams } from "@/lib/types/api.ts";
 import { enrollmentsApi } from "../api/enrollments-api.ts";
 import type {
   EnrollmentCreateRequest,
-  EnrollmentResponse,
   EnrollmentUpdateRequest,
 } from "../types/index.ts";
 import { enrollmentKeys } from "./query-keys.ts";

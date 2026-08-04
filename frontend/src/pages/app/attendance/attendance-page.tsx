@@ -121,7 +121,7 @@ export function AttendancePage() {
       return all.filter((circle) => circle.teacherId === profile.teacherId);
     }
     return all;
-  }, [data?.content, isParent, isStudent, mosqueId, profile?.teacherId, role]);
+  }, [data?.content, isParent, isStudent, mosqueId, profile, role]);
 
   const filteredData = data
     ? { ...data, content: circles, totalElements: circles.length }

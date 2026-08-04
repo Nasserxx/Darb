@@ -21,9 +21,10 @@ function StudentCirclesView() {
   });
 
   const circleIds = useMemo(() => {
-    if (!enrollmentsPage?.content) return undefined;
+    const content = enrollmentsPage?.content;
+    if (!content) return undefined;
     const ids = new Set<string>();
-    for (const enrollment of enrollmentsPage.content) {
+    for (const enrollment of content) {
       if (enrollment.status === "ACTIVE") {
         ids.add(enrollment.circleId);
       }

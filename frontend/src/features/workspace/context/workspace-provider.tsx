@@ -72,13 +72,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      setIsLoading(true);
-      void refreshProfile();
-    } else {
-      setProfile(null);
-      setIsLoading(false);
-    }
+    void (async () => {
+      if (isAuthenticated && user) {
+        setIsLoading(true);
+        await refreshProfile();
+      } else {
+        setProfile(null);
+        setIsLoading(false);
+      }
+    })();
   }, [isAuthenticated, user, refreshProfile]);
 
   const profileStatus = useMemo(
@@ -110,6 +112,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// useWorkspace is a hook, not a component; co-located with the provider contract
+// eslint-disable-next-line react-refresh/only-export-components
 export function useWorkspace(): WorkspaceContextValue {
   const context = useContext(WorkspaceContext);
   if (!context) {
