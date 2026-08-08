@@ -111,31 +111,32 @@ public class UserService {
 
         if (role == UserRole.MOSQUE_ADMIN || role == UserRole.TEACHER) {
             UUID mosqueId = mosqueAccessService.resolveCallerMosqueId(callerId, role);
-            if (mosqueId != null) {
-                spec = spec.and((root, q, cb) -> {
-                    q.distinct(true);
-                    Subquery<UUID> studentSubquery = q.subquery(UUID.class);
-                    Root<Student> studentRoot = studentSubquery.from(Student.class);
-                    studentSubquery.select(studentRoot.get("user").get("id"))
-                            .where(cb.equal(studentRoot.get("mosque").get("id"), mosqueId));
-
-                    Subquery<UUID> teacherSubquery = q.subquery(UUID.class);
-                    Root<Teacher> teacherRoot = teacherSubquery.from(Teacher.class);
-                    teacherSubquery.select(teacherRoot.get("user").get("id"))
-                            .where(cb.equal(teacherRoot.get("mosque").get("id"), mosqueId));
-
-                    Subquery<UUID> adminSubquery = q.subquery(UUID.class);
-                    Root<MosqueAdmin> adminRoot = adminSubquery.from(MosqueAdmin.class);
-                    adminSubquery.select(adminRoot.get("user").get("id"))
-                            .where(cb.equal(adminRoot.get("mosque").get("id"), mosqueId));
-
-                    return cb.or(
-                            root.get("id").in(studentSubquery),
-                            root.get("id").in(teacherSubquery),
-                            root.get("id").in(adminSubquery)
-                    );
-                });
+            if (mosqueId == null) {
+                return Page.empty(pageable);
             }
+            spec = spec.and((root, q, cb) -> {
+                q.distinct(true);
+                Subquery<UUID> studentSubquery = q.subquery(UUID.class);
+                Root<Student> studentRoot = studentSubquery.from(Student.class);
+                studentSubquery.select(studentRoot.get("user").get("id"))
+                        .where(cb.equal(studentRoot.get("mosque").get("id"), mosqueId));
+
+                Subquery<UUID> teacherSubquery = q.subquery(UUID.class);
+                Root<Teacher> teacherRoot = teacherSubquery.from(Teacher.class);
+                teacherSubquery.select(teacherRoot.get("user").get("id"))
+                        .where(cb.equal(teacherRoot.get("mosque").get("id"), mosqueId));
+
+                Subquery<UUID> adminSubquery = q.subquery(UUID.class);
+                Root<MosqueAdmin> adminRoot = adminSubquery.from(MosqueAdmin.class);
+                adminSubquery.select(adminRoot.get("user").get("id"))
+                        .where(cb.equal(adminRoot.get("mosque").get("id"), mosqueId));
+
+                return cb.or(
+                        root.get("id").in(studentSubquery),
+                        root.get("id").in(teacherSubquery),
+                        root.get("id").in(adminSubquery)
+                );
+            });
         }
 
         return userRepository.findAll(spec, pageable).map(this::toResponse);

@@ -5,7 +5,9 @@ export type { AdminPermission } from "@/lib/types/api.ts";
 export interface MosqueAdminResponse {
   id: Uuid;
   userId: Uuid;
+  userName: string;
   mosqueId: Uuid;
+  mosqueName: string;
   permission: AdminPermission;
   isPrimaryAdmin: boolean;
   assignedAt: Instant;
@@ -17,6 +19,7 @@ export interface MosqueAdminCreateRequest {
   mosqueId: Uuid;
   permission: AdminPermission;
   isPrimaryAdmin?: boolean;
+  assignedBy: Uuid;
 }
 
 export interface MosqueAdminUpdateRequest {

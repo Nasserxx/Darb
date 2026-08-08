@@ -4,6 +4,7 @@ export const userKeys = {
   all: ["users"] as const,
   lists: () => [...userKeys.all, "list"] as const,
   list: (params: PageParams = {}) => [...userKeys.lists(), params] as const,
+  search: (query: string) => [...userKeys.all, "search", query] as const,
   details: () => [...userKeys.all, "detail"] as const,
   detail: (id: string) => [...userKeys.details(), id] as const,
   me: () => [...userKeys.all, "me"] as const,

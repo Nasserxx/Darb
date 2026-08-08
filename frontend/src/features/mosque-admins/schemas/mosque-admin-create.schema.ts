@@ -25,15 +25,18 @@ export type MosqueAdminCreateRequestBody = {
   mosqueId: string;
   permission: AdminPermission;
   isPrimaryAdmin?: boolean;
+  assignedBy: string;
 };
 
 export function toMosqueAdminCreateRequestBody(
   values: MosqueAdminCreateFormValues,
+  assignedBy: string,
 ): MosqueAdminCreateRequestBody {
   const body: MosqueAdminCreateRequestBody = {
     userId: values.userId,
     mosqueId: values.mosqueId,
     permission: values.permission,
+    assignedBy,
   };
   if (values.isPrimaryAdmin !== undefined) {
     body.isPrimaryAdmin = values.isPrimaryAdmin;

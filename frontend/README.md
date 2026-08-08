@@ -6,7 +6,7 @@ React 19 + TypeScript + Vite SPA for Darb authentication (register, login, JWT s
 
 - **Node.js** 20+ (LTS recommended)
 - **npm** 10+
-- **Backend** running at `http://localhost:8080` (see repo root [README](../README.md) and `backend/`)
+- **Backend** running at `http://localhost:8089` (see repo root [README](../README.md) and `backend/`)
 
 ## Quick start
 
@@ -27,12 +27,12 @@ Open a locale-prefixed auth route, for example:
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `VITE_API_URL` | No | `http://localhost:8080` | Spring Boot API base URL (no trailing slash). Read at build/dev time via `import.meta.env.VITE_API_URL`. |
+| `VITE_API_URL` | No | `http://localhost:8089` | Spring Boot API base URL (no trailing slash). Read at build/dev time via `import.meta.env.VITE_API_URL`. |
 
 Create `frontend/.env.local` (gitignored) for local overrides:
 
 ```env
-VITE_API_URL=http://localhost:8080
+VITE_API_URL=http://localhost:8089
 ```
 
 Copy from the repo root [`.env.example`](../.env.example) when running backend + frontend together.

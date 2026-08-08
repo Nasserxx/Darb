@@ -64,7 +64,8 @@ export function ParentChildrenView() {
                     {t("students.detail")} #{child.fullName ?? formatShortId(child.id)}
                   </CardTitle>
                   <CardDescription>
-                    {t("students.mosqueId")}: {formatShortId(child.mosqueId)}
+                    {t("students.mosqueId")}:{" "}
+                    {child.mosqueName ?? formatShortId(child.mosqueId)}
                   </CardDescription>
                 </div>
                 <Badge variant="outline">

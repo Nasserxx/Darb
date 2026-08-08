@@ -36,6 +36,7 @@ import type { MessageResponse } from "@/features/messages/types/index.ts";
 import { useTeacher } from "@/features/teachers/hooks/use-teachers.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { cn } from "@/lib/utils.ts";
 
@@ -75,16 +76,20 @@ export function CircleMessagesPage() {
   const receiverId = watch("receiverId");
 
   const receiverOptions = useMemo(() => {
-    const ids = new Set<string>();
-    if (teacher?.userId && teacher.userId !== user?.userId) {
-      ids.add(teacher.userId);
-    }
+    const byName = new Map<string, string>();
+    const note = (userId: string, name?: string) => {
+      if (!userId || userId === user?.userId) return;
+      if (!byName.has(userId)) {
+        byName.set(userId, name ?? formatShortId(userId));
+      }
+    };
+    if (teacher?.userId) note(teacher.userId, teacher.userName);
     for (const message of data?.content ?? []) {
-      if (message.senderId !== user?.userId) ids.add(message.senderId);
-      if (message.receiverId !== user?.userId) ids.add(message.receiverId);
+      note(message.senderId, message.senderName);
+      note(message.receiverId, message.receiverName);
     }
-    return [...ids];
-  }, [data?.content, teacher?.userId, user?.userId]);
+    return [...byName.entries()].map(([userId, label]) => ({ userId, label }));
+  }, [data?.content, teacher, user?.userId]);
 
   useEffect(() => {
     if (circleId) setValue("circleId", circleId);
@@ -92,7 +97,7 @@ export function CircleMessagesPage() {
 
   useEffect(() => {
     if (!receiverId && receiverOptions.length > 0) {
-      setValue("receiverId", receiverOptions[0]!);
+      setValue("receiverId", receiverOptions[0]!.userId);
     }
   }, [receiverId, receiverOptions, setValue]);
 
@@ -126,7 +131,7 @@ export function CircleMessagesPage() {
       <PageHeader
         title={circle?.name ?? t("messages.thread")}
         description={t("messages.threadDescription", {
-          circle: circleId ? `${circleId.slice(0, 8)}…` : "",
+          circle: circle?.name ?? t("messages.thread"),
         })}
         actions={
           <Button variant="outline" size="sm" asChild>
@@ -209,9 +214,9 @@ export function CircleMessagesPage() {
                     <SelectValue placeholder={t("messages.receiverPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {receiverOptions.map((id) => (
-                      <SelectItem key={id} value={id}>
-                        {id.slice(0, 8)}…
+                    {receiverOptions.map((option) => (
+                      <SelectItem key={option.userId} value={option.userId}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -38,6 +38,7 @@ import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import { canManageMemorization } from "@/lib/navigation/role-permissions.ts";
@@ -91,7 +92,10 @@ export function StudentMemorizationPage() {
             enrollment.studentId === studentId &&
             enrollment.status === "ACTIVE",
         )
-        .map((enrollment) => enrollment.circleId),
+        .map((enrollment) => ({
+          circleId: enrollment.circleId,
+          circleName: enrollment.circleName,
+        })),
     [enrollmentsPage?.content, studentId],
   );
 
@@ -106,7 +110,7 @@ export function StudentMemorizationPage() {
     resolver: zodResolver(memorizationCreateSchema),
     defaultValues: {
       studentId: studentId ?? "",
-      circleId: enrolledCircles[0] ?? "",
+      circleId: enrolledCircles[0]?.circleId ?? "",
       teacherId: profile?.teacherId ?? "",
       surahNumber: 1,
       ayahFrom: 1,
@@ -220,9 +224,9 @@ export function StudentMemorizationPage() {
                       <SelectValue placeholder={t("onboarding.selectPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {enrolledCircles.map((circleId) => (
-                        <SelectItem key={circleId} value={circleId}>
-                          {circleId.slice(0, 8)}…
+                      {enrolledCircles.map((circle) => (
+                        <SelectItem key={circle.circleId} value={circle.circleId}>
+                          {circle.circleName ?? formatShortId(circle.circleId)}
                         </SelectItem>
                       ))}
                     </SelectContent>

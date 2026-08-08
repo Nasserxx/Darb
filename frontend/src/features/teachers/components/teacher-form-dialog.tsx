@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
+import { UserSearchSelect } from "@/components/shared/user-search-select.tsx";
 import {
   Field,
   FieldDescription,
@@ -228,11 +229,16 @@ export function TeacherFormDialog({ open, onOpenChange, teacher }: TeacherFormDi
       ) : (
         <FieldGroup>
           <Field data-invalid={!!createErrors.userId}>
-            <FieldLabel htmlFor="teacher-user-id">{t("teachers.userId")}</FieldLabel>
-            <Input
-              id="teacher-user-id"
-              aria-invalid={!!createErrors.userId}
-              {...createForm.register("userId")}
+            <FieldLabel>{t("teachers.userId")}</FieldLabel>
+            <Controller
+              name="userId"
+              control={createForm.control}
+              render={({ field }) => (
+                <UserSearchSelect
+                  value={field.value}
+                  onValueChange={field.onChange}
+                />
+              )}
             />
             {createErrors.userId ? (
               <FieldDescription className="text-destructive">

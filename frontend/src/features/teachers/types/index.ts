@@ -3,6 +3,7 @@ import type { Instant, Uuid } from "@/lib/types/api.ts";
 export interface TeacherResponse {
   id: Uuid;
   userId: Uuid;
+  userName: string;
   mosqueId: Uuid;
   specialization: string | null;
   bio: string | null;

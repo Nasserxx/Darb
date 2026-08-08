@@ -10,7 +10,9 @@ import type {
 export interface AttendanceResponse {
   id: Uuid;
   enrollmentId: Uuid;
+  studentName: string;
   circleId: Uuid;
+  circleName: string;
   sessionDate: LocalDate;
   status: AttendanceStatus;
   scheduledStart?: LocalTime;

@@ -178,7 +178,7 @@
                          "description":  "Assign mosque administrator permissions.",
                          "create":  "Add mosque admin",
                          "edit":  "Edit mosque admin",
-                         "userId":  "User ID",
+                         "userId":  "User",
                          "mosqueId":  "Mosque",
                          "permission":  "Permission",
                          "isPrimaryAdmin":  "Primary admin",
@@ -203,7 +203,7 @@
                      "description":  "Manage teachers at your mosque.",
                      "create":  "Add teacher",
                      "edit":  "Edit teacher",
-                     "userId":  "User ID",
+                     "userId":  "User",
                      "mosqueId":  "Mosque",
                      "specialization":  "Specialization",
                      "yearsExperience":  "Years of experience",
@@ -228,8 +228,8 @@
                      "edit":  "Edit student",
                      "detail":  "Student details",
                      "backToList":  "Back to students",
-                     "userId":  "User ID",
-                     "mosqueId":  "Mosque ID",
+                     "userId":  "User",
+                     "mosqueId":  "Mosque",
                      "nationalId":  "National ID",
                      "medicalNotes":  "Medical notes",
                      "memorizedJuz":  "Memorized juz",
@@ -246,8 +246,8 @@
                            "description":  "Link parent accounts to students.",
                            "create":  "Add link",
                            "edit":  "Edit link",
-                           "parentUserId":  "Parent user ID",
-                           "studentId":  "Student ID",
+                           "parentUserId":  "Parent",
+                           "studentId":  "Student",
                            "relationship":  "Relationship",
                            "isPrimary":  "Primary contact",
                            "primaryYes":  "Primary",
@@ -276,6 +276,8 @@
                     "startTime":  "Start",
                     "endTime":  "End",
                     "roomOrLink":  "Room / link",
+                    "selectMosque":  "Select mosque…",
+                    "selectTeacher":  "Select teacher…",
                     "createSuccess":  "Circle created.",
                     "updateSuccess":  "Circle updated.",
                     "deleteSuccess":  "Circle deleted.",
@@ -502,6 +504,12 @@
                                        "pendingMosque":  "pending · {{mosque}}"
                                    }
                    },
+    "users":  {
+                  "searchPlaceholder":  "Search by name…",
+                  "selectUser":  "Select a user…",
+                  "searching":  "Searching…",
+                  "noResults":  "No users found"
+              },
     "enums":  {
                   "enrollmentStatus":  {
                                            "PENDING":  "Pending",

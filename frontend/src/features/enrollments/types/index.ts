@@ -5,8 +5,8 @@ import type {
 } from "@/lib/types/api.ts";
 
 export interface EnrollmentResponse {
-  studentName?: string;
-  circleName?: string;
+  studentName: string;
+  circleName: string;
   id: Uuid;
   studentId: Uuid;
   circleId: Uuid;

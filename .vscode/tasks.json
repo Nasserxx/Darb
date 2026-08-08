@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Darb: clean & compile backend",
+			"type": "shell",
+			"command": "cmd",
+			"args": ["/c", "mvnw.cmd", "-q", "clean", "compile"],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared",
+				"clear": true
+			}
+		}
+	]
+}

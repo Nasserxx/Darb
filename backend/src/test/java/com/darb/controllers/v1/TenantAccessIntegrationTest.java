@@ -83,6 +83,54 @@ class TenantAccessIntegrationTest extends PostgresIntegrationTestBase {
                 .andExpect(jsonPath("$.success").value(false));
     }
 
+    @Test
+    void mosqueAdmin_cannotSearchUserFromOtherMosque() throws Exception {
+        String adminAEmail = "admin-a-search-tenant@test.darb";
+        String adminBEmail = "admin-b-search-tenant@test.darb";
+        registerMosqueAdmin(adminAEmail);
+        registerMosqueAdmin(adminBEmail);
+
+        String tokenA = login(adminAEmail);
+        String tokenB = login(adminBEmail);
+
+        onboardMosque(tokenA, "Mosque Alpha Search");
+        String mosqueBId = onboardMosque(tokenB, "Mosque Beta Search");
+
+        registerStudent("student-b-search-tenant@test.darb");
+        String studentUserId = userRepository.findByEmail("student-b-search-tenant@test.darb").orElseThrow().getId().toString();
+        createStudent(tokenB, studentUserId, mosqueBId);
+
+        mockMvc.perform(get("/api/v1/users/search")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .param("q", "student-b-search-tenant"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    void mosqueAdmin_canSearchUserInOwnMosque() throws Exception {
+        String adminAEmail = "admin-a-search-own@test.darb";
+        registerMosqueAdmin(adminAEmail);
+
+        String tokenA = login(adminAEmail);
+
+        String mosqueAId = onboardMosque(tokenA, "Mosque Alpha Search Own");
+
+        registerStudent("student-a-search-own@test.darb");
+        String studentUserId = userRepository.findByEmail("student-a-search-own@test.darb").orElseThrow().getId().toString();
+        createStudent(tokenA, studentUserId, mosqueAId);
+
+        mockMvc.perform(get("/api/v1/users/search")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .param("q", "student-a-search-own"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].fullName").value("Student User"))
+                .andExpect(jsonPath("$.data.content[0].email").value("student-a-search-own@test.darb"));
+    }
+
     private void registerMosqueAdmin(String email) throws Exception {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

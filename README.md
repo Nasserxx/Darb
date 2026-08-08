@@ -9,7 +9,7 @@ The SPA lives under `frontend/` (React, Vite, TypeScript). Auth flows (register,
 - **Architecture:** [frontend/docs/IMPLEMENTATION.md](frontend/docs/IMPLEMENTATION.md)
 - **Adding features/routes:** [frontend/docs/EXTENDING.md](frontend/docs/EXTENDING.md)
 
-Run the backend on port 8080 and set `CORS_ALLOWED_ORIGINS` to include the frontend origin (see repo `.env.example`).
+Run the backend on port 8089 and set `CORS_ALLOWED_ORIGINS` to include the frontend origin (see repo `.env.example`).
 
 ## Backend toolchain
 

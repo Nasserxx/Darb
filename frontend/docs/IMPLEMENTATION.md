@@ -133,4 +133,4 @@ For production hardening, consider **httpOnly, Secure, SameSite** cookies issued
 | `VITE_API_URL` | `frontend/.env*` | API origin for `apiFetch` (Vite exposes only `VITE_*` to client) |
 | `CORS_ALLOWED_ORIGINS` | Repo root `.env` (backend) | Allowed browser origins for `/api/**` |
 
-Backend defaults: API `8080`, CORS `http://localhost:3000`. Frontend defaults: `VITE_API_URL` → `http://localhost:8080`, Vite dev port `3000`.
+Backend defaults: API `8089`, CORS `http://localhost:3000`. Frontend defaults: `VITE_API_URL` → `http://localhost:8089`, Vite dev port `3000`.

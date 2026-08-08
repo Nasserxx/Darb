@@ -28,6 +28,9 @@ public class PaymentResponse {
     @Schema(description = "Student ID")
     private UUID studentId;
 
+    @Schema(description = "Student name")
+    private String studentName;
+
     @Schema(description = "Circle ID")
     private UUID circleId;
 

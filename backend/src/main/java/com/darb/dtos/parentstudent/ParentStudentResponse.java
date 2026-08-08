@@ -21,8 +21,14 @@ public class ParentStudentResponse {
     @Schema(description = "User ID of the parent")
     private UUID parentUserId;
 
+    @Schema(description = "Full name of the parent")
+    private String parentName;
+
     @Schema(description = "Student ID")
     private UUID studentId;
+
+    @Schema(description = "Full name of the student")
+    private String studentName;
 
     @Schema(description = "Relationship to the student", example = "Father")
     private String relationship;

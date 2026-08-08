@@ -5,9 +5,17 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
+import { UserSearchSelect } from "@/components/shared/user-search-select.tsx";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useCreateParentStudent,
   useUpdateParentStudent,
@@ -19,10 +27,12 @@ import {
   type ParentStudentUpdateFormValues,
 } from "@/features/parent-students/schemas/parent-student.schema.ts";
 import type { ParentStudentResponse } from "@/features/parent-students/types/index.ts";
+import { useStudents } from "@/features/students/hooks/use-students.ts";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 
 type ParentStudentFormDialogProps = {
   open: boolean;
@@ -40,6 +50,7 @@ export function ParentStudentFormDialog({
   const createMutation = useCreateParentStudent();
   const updateMutation = useUpdateParentStudent();
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const { data: studentsPage } = useStudents({ page: 0, size: 500 });
 
   const createForm = useForm<ParentStudentCreateFormValues>({
     resolver: zodResolver(parentStudentCreateSchema),
@@ -131,23 +142,39 @@ export function ParentStudentFormDialog({
         {!isEdit ? (
           <>
             <Field data-invalid={!!createForm.formState.errors.parentUserId}>
-              <FieldLabel htmlFor="parentUserId">
-                {t("parentStudents.parentUserId")}
-              </FieldLabel>
-              <Input
-                id="parentUserId"
-                {...createForm.register("parentUserId")}
-                aria-invalid={!!createForm.formState.errors.parentUserId}
+              <FieldLabel>{t("parentStudents.parentUserId")}</FieldLabel>
+              <Controller
+                name="parentUserId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <UserSearchSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                )}
               />
             </Field>
             <Field data-invalid={!!createForm.formState.errors.studentId}>
-              <FieldLabel htmlFor="studentId">
-                {t("parentStudents.studentId")}
-              </FieldLabel>
-              <Input
-                id="studentId"
-                {...createForm.register("studentId")}
-                aria-invalid={!!createForm.formState.errors.studentId}
+              <FieldLabel>{t("parentStudents.studentId")}</FieldLabel>
+              <Controller
+                name="studentId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      aria-invalid={!!createForm.formState.errors.studentId}
+                    >
+                      <SelectValue placeholder={t("payments.studentPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(studentsPage?.content ?? []).map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.fullName ?? formatShortId(student.id)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </Field>
           </>

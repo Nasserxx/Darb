@@ -22,6 +22,9 @@ public class TeacherResponse {
     @Schema(description = "Associated user ID")
     private UUID userId;
 
+    @Schema(description = "Full name of the teacher's user")
+    private String userName;
+
     @Schema(description = "Assigned mosque ID")
     private UUID mosqueId;
 

@@ -61,6 +61,8 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                 .andExpect(jsonPath("$.data.mosque.name").value("Founder Mosque"))
                 .andExpect(jsonPath("$.data.admin.isPrimaryAdmin").value(true))
                 .andExpect(jsonPath("$.data.admin.permission").value("FULL_ACCESS"))
+                .andExpect(jsonPath("$.data.admin.userName").value("Mosque Admin"))
+                .andExpect(jsonPath("$.data.admin.mosqueName").value("Founder Mosque"))
                 .andExpect(jsonPath("$.data.inviteCode").isNotEmpty());
 
         User user = userRepository.findByEmail(email).orElseThrow();

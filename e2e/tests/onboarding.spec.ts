@@ -140,7 +140,7 @@ test.describe("Onboarding", () => {
       process.env.API_URL ??
       process.env.API_BASE_URL ??
       process.env.VITE_API_URL ??
-      "http://localhost:8082";
+      "http://localhost:8089";
     await request.post(`${apiBase}/api/v1/teachers/join`, {
       headers: {
         Authorization: `Bearer ${session.accessToken}`,

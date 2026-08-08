@@ -6,6 +6,7 @@ export {
   useUpdateCurrentUser,
   useUpdateUser,
   useUser,
+  useUserSearch,
   useUsers,
 } from "./hooks/index.ts";
 export {

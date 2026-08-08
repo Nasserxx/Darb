@@ -53,7 +53,7 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
         columns={[
           {
             id: "id",
-            header: "ID",
+            header: t("students.title"),
             cell: (row) => (
               <Link
                 to={`/${localePrefix}/students/${row.id}`}

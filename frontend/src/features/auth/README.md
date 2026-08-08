@@ -4,7 +4,7 @@ Client-side authentication for Darb: registration, login, JWT session, token ref
 
 ## API endpoints
 
-Base URL: `VITE_API_URL` or `http://localhost:8080`. All paths below are relative to that origin.
+Base URL: `VITE_API_URL` or `http://localhost:8089`. All paths below are relative to that origin.
 
 | Function | Method | Path | Auth header | Request body | Response |
 | --- | --- | --- | --- | --- | --- |

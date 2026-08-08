@@ -10,6 +10,7 @@ import type {
 
 export interface PaymentResponse {
   id: Uuid;
+  studentName: string;
   studentId: Uuid;
   circleId: Uuid;
   mosqueId: Uuid;

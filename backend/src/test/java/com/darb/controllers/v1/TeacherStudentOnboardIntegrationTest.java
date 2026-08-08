@@ -81,7 +81,8 @@ class TeacherStudentOnboardIntegrationTest extends PostgresIntegrationTestBase {
                                 """.formatted(mosqueId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()));
+                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()))
+                .andExpect(jsonPath("$.data.userName").isNotEmpty());
 
         var user = userRepository.findByEmail(email).orElseThrow();
         assertThat(teacherRepository.findByUserId(user.getId())).hasSize(1);
@@ -128,7 +129,8 @@ class TeacherStudentOnboardIntegrationTest extends PostgresIntegrationTestBase {
                                 """.formatted(mosqueId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()));
+                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()))
+                .andExpect(jsonPath("$.data.mosqueName").isNotEmpty());
     }
 
     @Test

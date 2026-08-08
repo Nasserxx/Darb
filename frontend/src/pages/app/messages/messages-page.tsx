@@ -14,12 +14,9 @@ import {
 } from "@/features/messages/hooks/use-messages.ts";
 import type { MessageResponse } from "@/features/messages/types/index.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
-
-function shortId(value: string): string {
-  return `${value.slice(0, 8)}…`;
-}
 
 function formatInstant(value: string): string {
   return new Date(value).toLocaleString();
@@ -51,7 +48,7 @@ export function MessagesPage() {
             to={`/${localePrefix}/messages/circle/${row.circleId}`}
             className="text-sm font-medium text-primary hover:underline"
           >
-            {shortId(row.circleId)}
+            {row.circleName ?? formatShortId(row.circleId)}
           </Link>
         ),
       },

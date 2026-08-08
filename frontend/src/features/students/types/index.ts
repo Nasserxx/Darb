@@ -4,6 +4,7 @@ export interface StudentResponse {
   id: Uuid;
   userId: Uuid;
   mosqueId: Uuid;
+  mosqueName: string;
   nationalId: string | null;
   fullName: string | null;
   medicalNotes: string | null;

@@ -34,9 +34,9 @@ import type { AttendanceStatus } from "@/lib/types/api.ts";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useCircle } from "@/features/circles/hooks/use-circles.ts";
 import { useEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts";
-import { useStudents } from "@/features/students/hooks/use-students.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { canMarkAttendance } from "@/lib/navigation/role-permissions.ts";
 import { ArrowLeftIcon } from "lucide-react";
 
@@ -55,6 +55,7 @@ function todayLocalDate(): string {
 type RosterRow = {
   enrollmentId: string;
   studentId: string;
+  studentName?: string;
   status: AttendanceStatus;
   attendanceId?: string;
 };
@@ -77,23 +78,11 @@ export function CircleAttendancePage() {
   });
   const { data: enrollmentsPage, isLoading: enrollmentsLoading } =
     useEnrollments({ page: 0, size: 500 });
-  const { data: studentsPage, isLoading: studentsLoading } = useStudents({
-    page: 0,
-    size: 500,
-  });
   const { data: attendancePage, isLoading: attendanceLoading } =
     useAttendanceByCircle(circleId, { page: 0, size: 500 });
 
   const createAttendance = useCreateAttendance();
   const updateAttendance = useUpdateAttendance();
-
-  const studentLabels = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const student of studentsPage?.content ?? []) {
-      map.set(student.id, student.fullName ?? student.id.slice(0, 8));
-    }
-    return map;
-  }, [studentsPage?.content]);
 
   const activeEnrollments = useMemo(
     () =>
@@ -121,6 +110,7 @@ export function CircleAttendancePage() {
         return {
           enrollmentId: enrollment.id,
           studentId: enrollment.studentId,
+          studentName: enrollment.studentName,
           status:
             statusOverrides[enrollment.id] ?? existing?.status ?? "PRESENT",
           attendanceId: existing?.id,
@@ -129,8 +119,7 @@ export function CircleAttendancePage() {
     [activeEnrollments, attendanceForDate, statusOverrides],
   );
 
-  const isLoading =
-    circleLoading || enrollmentsLoading || studentsLoading || attendanceLoading;
+  const isLoading = circleLoading || enrollmentsLoading || attendanceLoading;
 
   function updateRowStatus(enrollmentId: string, status: AttendanceStatus) {
     setStatusOverrides((prev) => ({ ...prev, [enrollmentId]: status }));
@@ -219,7 +208,7 @@ export function CircleAttendancePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student Name</TableHead>
+                <TableHead>{t("attendance.student")}</TableHead>
                 <TableHead>{t("attendance.status")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -228,7 +217,7 @@ export function CircleAttendancePage() {
                 <TableRow key={row.enrollmentId}>
                   <TableCell>
                     <span className="font-medium">
-                      {studentLabels.get(row.studentId) ?? row.studentId.slice(0, 8)}
+                      {row.studentName ?? formatShortId(row.studentId)}
                     </span>
                     {row.attendanceId ? (
                       <Badge variant="outline" className="ml-2">

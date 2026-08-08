@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 
 import { MosqueAdminFormDialog } from "./mosque-admin-form-dialog.tsx";
 import {
@@ -67,16 +68,12 @@ export function MosqueAdminsList() {
           {
             id: "userId",
             header: t("mosqueAdmins.userId"),
-            cell: (row) => (
-              <span className="font-mono text-xs">{row.userId.slice(0, 8)}…</span>
-            ),
+            cell: (row) => row.userName ?? formatShortId(row.userId),
           },
           {
             id: "mosqueId",
             header: t("mosqueAdmins.mosqueId"),
-            cell: (row) => (
-              <span className="font-mono text-xs">{row.mosqueId.slice(0, 8)}…</span>
-            ),
+            cell: (row) => row.mosqueName ?? formatShortId(row.mosqueId),
           },
           {
             id: "permission",

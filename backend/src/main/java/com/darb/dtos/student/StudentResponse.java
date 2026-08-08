@@ -30,6 +30,9 @@ public class StudentResponse {
     @Schema(description = "Enrolled mosque ID")
     private UUID mosqueId;
 
+    @Schema(description = "Name of the enrolled mosque")
+    private String mosqueName;
+
     @Schema(description = "National ID number", example = "1098765432")
     private String nationalId;
 

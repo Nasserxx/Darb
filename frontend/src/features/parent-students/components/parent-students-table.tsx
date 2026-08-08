@@ -46,12 +46,12 @@ export function ParentStudentsTable() {
           {
             id: "parent",
             header: t("parentStudents.parentUserId"),
-            cell: (row) => formatShortId(row.parentUserId),
+            cell: (row) => row.parentName ?? formatShortId(row.parentUserId),
           },
           {
             id: "student",
             header: t("parentStudents.studentId"),
-            cell: (row) => formatShortId(row.studentId),
+            cell: (row) => row.studentName ?? formatShortId(row.studentId),
           },
           {
             id: "relationship",

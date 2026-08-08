@@ -166,6 +166,7 @@ public class TeacherService {
         return TeacherResponse.builder()
                 .id(teacher.getId())
                 .userId(teacher.getUser().getId())
+                .userName(teacher.getUser().getFullName())
                 .mosqueId(teacher.getMosque().getId())
                 .specialization(teacher.getSpecialization())
                 .bio(teacher.getBio())

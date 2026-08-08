@@ -24,8 +24,14 @@ public class EnrollmentResponse {
     @Schema(description = "Student ID")
     private UUID studentId;
 
+    @Schema(description = "Student name")
+    private String studentName;
+
     @Schema(description = "Circle ID")
     private UUID circleId;
+
+    @Schema(description = "Circle name")
+    private String circleName;
 
     @Schema(description = "Enrollment status", example = "ACTIVE")
     private EnrollmentStatus status;

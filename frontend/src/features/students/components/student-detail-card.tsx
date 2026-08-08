@@ -12,8 +12,8 @@ export function StudentDetailCard({ student }: StudentDetailCardProps) {
   const { t } = useTranslation("app");
 
   const fields = [
-    { label: t("students.userId"), value: formatShortId(student.userId) },
-    { label: t("students.mosqueId"), value: formatShortId(student.mosqueId) },
+    { label: t("students.userId"), value: student.fullName ?? formatShortId(student.userId) },
+    { label: t("students.mosqueId"), value: student.mosqueName ?? formatShortId(student.mosqueId) },
     { label: t("students.nationalId"), value: student.nationalId ?? "—" },
     { label: t("students.memorizedJuz"), value: student.memorizedJuz ?? "—" },
     { label: t("students.totalAbsences"), value: student.totalAbsences },

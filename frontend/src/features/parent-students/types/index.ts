@@ -3,7 +3,9 @@ import type { Uuid } from "@/lib/types/api.ts";
 export interface ParentStudentResponse {
   id: Uuid;
   parentUserId: Uuid;
+  parentName: string;
   studentId: Uuid;
+  studentName: string;
   relationship: string | null;
   isPrimary: boolean;
   receivesNotifications: boolean;

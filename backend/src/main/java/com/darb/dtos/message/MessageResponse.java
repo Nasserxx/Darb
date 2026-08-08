@@ -24,11 +24,20 @@ public class MessageResponse {
     @Schema(description = "Sender user ID")
     private UUID senderId;
 
+    @Schema(description = "Sender full name")
+    private String senderName;
+
     @Schema(description = "Receiver user ID")
     private UUID receiverId;
 
+    @Schema(description = "Receiver full name")
+    private String receiverName;
+
     @Schema(description = "Circle ID (for circle-threaded messages)")
     private UUID circleId;
+
+    @Schema(description = "Circle name")
+    private String circleName;
 
     @Schema(description = "Message content")
     private String content;

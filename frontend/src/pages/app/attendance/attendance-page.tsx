@@ -13,6 +13,7 @@ import type { AttendanceResponse } from "@/features/attendance/types/index.ts";
 import type { CircleResponse } from "@/features/circles/types/index.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { canMarkAttendance } from "@/lib/navigation/role-permissions.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
@@ -27,15 +28,6 @@ function StudentAttendanceView() {
 
   const { data: attendanceData, isLoading: attendanceLoading } =
     useAttendanceByStudent(studentId, params);
-  const { data: circlesData } = useCircles({ page: 0, size: 500 });
-
-  const circleNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const circle of circlesData?.content ?? []) {
-      map.set(circle.id, circle.name);
-    }
-    return map;
-  }, [circlesData?.content]);
 
   const columns = [
     {
@@ -49,7 +41,7 @@ function StudentAttendanceView() {
       id: "circle",
       header: t("circles.title"),
       cell: (row: AttendanceResponse) => (
-        <span>{circleNames.get(row.circleId) ?? row.circleId.slice(0, 8)}</span>
+        <span>{row.circleName ?? formatShortId(row.circleId)}</span>
       ),
     },
     {

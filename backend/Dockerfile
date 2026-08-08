@@ -13,5 +13,5 @@ RUN groupadd --system --gid 65532 app && useradd --system --uid 65532 --gid app 
 WORKDIR /app
 COPY --from=builder /app/target/*.jar /app/app.jar
 USER app
-EXPOSE 8080
+EXPOSE 8089
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

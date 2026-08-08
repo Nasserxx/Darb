@@ -5,7 +5,12 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,11 +31,14 @@ import {
   type CircleUpdateFormValues,
 } from "@/features/circles/schemas/circle.schema.ts";
 import type { CircleResponse } from "@/features/circles/types/index.ts";
+import { useMosques } from "@/features/mosques/hooks/use-mosques.ts";
+import { useTeachers } from "@/features/teachers/hooks/use-teachers.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import type { CircleLevel, CircleStatus, CircleType } from "@/lib/types/api.ts";
 
 const LEVELS: CircleLevel[] = [
@@ -56,6 +64,8 @@ export function CircleFormDialog({ open, onOpenChange, circle }: CircleFormDialo
   const createMutation = useCreateCircle();
   const updateMutation = useUpdateCircle();
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
+  const { data: teachersPage } = useTeachers({ page: 0, size: 500 });
 
   const createForm = useForm<CircleCreateFormValues>({
     resolver: zodResolver(circleCreateSchema),
@@ -165,13 +175,57 @@ export function CircleFormDialog({ open, onOpenChange, circle }: CircleFormDialo
       <FieldGroup>
         {!isEdit ? (
           <>
-            <Field>
-              <FieldLabel htmlFor="mosqueId">{t("circles.mosqueId")}</FieldLabel>
-              <Input id="mosqueId" {...createForm.register("mosqueId")} />
+            <Field data-invalid={!!createForm.formState.errors.mosqueId}>
+              <FieldLabel>{t("circles.mosqueId")}</FieldLabel>
+              <Controller
+                name="mosqueId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={!!createForm.formState.errors.mosqueId}>
+                      <SelectValue placeholder={t("circles.selectMosque")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(mosquesPage?.content ?? []).map((mosque) => (
+                        <SelectItem key={mosque.id} value={mosque.id}>
+                          {mosque.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {createForm.formState.errors.mosqueId ? (
+                <FieldDescription className="text-destructive">
+                  {createForm.formState.errors.mosqueId.message}
+                </FieldDescription>
+              ) : null}
             </Field>
-            <Field>
-              <FieldLabel htmlFor="teacherId">{t("circles.teacherId")}</FieldLabel>
-              <Input id="teacherId" {...createForm.register("teacherId")} />
+            <Field data-invalid={!!createForm.formState.errors.teacherId}>
+              <FieldLabel>{t("circles.teacherId")}</FieldLabel>
+              <Controller
+                name="teacherId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger aria-invalid={!!createForm.formState.errors.teacherId}>
+                      <SelectValue placeholder={t("circles.selectTeacher")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(teachersPage?.content ?? []).map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.userName ?? formatShortId(teacher.userId)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {createForm.formState.errors.teacherId ? (
+                <FieldDescription className="text-destructive">
+                  {createForm.formState.errors.teacherId.message}
+                </FieldDescription>
+              ) : null}
             </Field>
           </>
         ) : null}

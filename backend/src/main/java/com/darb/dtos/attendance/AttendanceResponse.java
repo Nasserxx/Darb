@@ -27,8 +27,14 @@ public class AttendanceResponse {
     @Schema(description = "Enrollment ID")
     private UUID enrollmentId;
 
+    @Schema(description = "Student name")
+    private String studentName;
+
     @Schema(description = "Circle ID")
     private UUID circleId;
+
+    @Schema(description = "Circle name")
+    private String circleName;
 
     @Schema(description = "Date of the session")
     private LocalDate sessionDate;

@@ -151,7 +151,8 @@ class MosqueMemberJoinRequestIntegrationTest extends PostgresIntegrationTestBase
                                 }
                                 """.formatted(teacherInviteCode)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()));
+                .andExpect(jsonPath("$.data.mosqueId").value(mosqueId.toString()))
+                .andExpect(jsonPath("$.data.userName").isNotEmpty());
     }
 
     private void registerRole(String email, String role) throws Exception {

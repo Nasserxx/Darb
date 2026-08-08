@@ -242,16 +242,12 @@ export function AdminDashboardPage() {
               {
                 id: "student",
                 header: t("students.title"),
-                cell: (row) => (
-                  <span className="font-mono text-xs">{row.studentName ?? formatShortId(row.studentId)}</span>
-                ),
+                cell: (row) => row.studentName ?? formatShortId(row.studentId),
               },
               {
                 id: "circle",
                 header: t("circles.title"),
-                cell: (row) => (
-                  <span className="font-mono text-xs">{row.circleName ?? formatShortId(row.circleId)}</span>
-                ),
+                cell: (row) => row.circleName ?? formatShortId(row.circleId),
               },
               {
                 id: "status",

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 
 import { TeacherFormDialog } from "./teacher-form-dialog.tsx";
 import { useDeleteTeacher, useTeachers } from "../hooks/use-teachers.ts";
@@ -64,9 +65,7 @@ export function TeachersList() {
           {
             id: "userId",
             header: t("teachers.userId"),
-            cell: (row) => (
-              <span className="font-mono text-xs">{row.userId.slice(0, 8)}…</span>
-            ),
+            cell: (row) => row.userName ?? formatShortId(row.userId),
           },
           {
             id: "specialization",

@@ -387,6 +387,8 @@ class OverrideAuditIntegrationTest extends PostgresIntegrationTestBase {
                                 }
                                 """.formatted(studentId, circleId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.studentName").value("Student User"))
+                .andExpect(jsonPath("$.data.circleName").isNotEmpty())
                 .andReturn();
 
         return com.jayway.jsonpath.JsonPath.read(

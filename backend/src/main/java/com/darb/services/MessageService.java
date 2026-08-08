@@ -11,6 +11,7 @@ import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.MessageRepository;
 import com.darb.repositories.UserRepository;
+import com.darb.security.MosqueAccessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +30,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final CircleRepository circleRepository;
+    private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
     public Page<MessageResponse> findAll(Pageable pageable) {
@@ -68,7 +70,15 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MessageResponse> findByCircleId(UUID circleId, Pageable pageable) {
+    public Page<MessageResponse> findByCircleId(UUID callerId, UUID circleId, Pageable pageable) {
+        Circle circle = circleRepository.findById(circleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", circleId));
+        boolean isParticipant = messageRepository.findByCircleId(circleId).stream()
+                .anyMatch(message -> message.getSender().getId().equals(callerId)
+                        || message.getReceiver().getId().equals(callerId));
+        if (!isParticipant) {
+            mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
+        }
         return messageRepository.findByCircleId(circleId, pageable).map(this::toResponse);
     }
 
@@ -108,8 +118,11 @@ public class MessageService {
         return MessageResponse.builder()
                 .id(message.getId())
                 .senderId(message.getSender().getId())
+                .senderName(message.getSender().getFullName())
                 .receiverId(message.getReceiver().getId())
+                .receiverName(message.getReceiver().getFullName())
                 .circleId(message.getCircle().getId())
+                .circleName(message.getCircle().getName())
                 .content(message.getContent())
                 .status(message.getStatus())
                 .sentAt(message.getSentAt())

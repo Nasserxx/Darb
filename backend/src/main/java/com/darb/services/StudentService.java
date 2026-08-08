@@ -182,6 +182,7 @@ public class StudentService {
                 .userId(student.getUser().getId())
                 .fullName(student.getUser().getFullName())
                 .mosqueId(student.getMosque().getId())
+                .mosqueName(student.getMosque().getName())
                 .nationalId(student.getNationalId())
                 .medicalNotes(student.getMedicalNotes())
                 .memorizedJuz(student.getMemorizedJuz())

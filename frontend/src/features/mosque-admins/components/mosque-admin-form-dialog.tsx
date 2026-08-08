@@ -11,7 +11,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import {
   Select,
   SelectContent,
@@ -20,11 +19,14 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useMosques } from "@/features/mosques/hooks/use-mosques.ts";
+import { useUsers } from "@/features/users/hooks/use-users.ts";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import type { AdminPermission } from "@/lib/types/api.ts";
 
 import {
@@ -65,7 +67,9 @@ export function MosqueAdminFormDialog({
   const createAdmin = useCreateMosqueAdmin();
   const updateAdmin = useUpdateMosqueAdmin();
   const isPending = createAdmin.isPending || updateAdmin.isPending;
+  const { user } = useAuth();
   const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
+  const { data: usersPage } = useUsers({ page: 0, size: 500 });
 
   const createForm = useForm<MosqueAdminCreateFormValues>({
     resolver: zodResolver(mosqueAdminCreateSchema),
@@ -103,7 +107,9 @@ export function MosqueAdminFormDialog({
 
   async function handleCreateSubmit(values: MosqueAdminCreateFormValues) {
     try {
-      await createAdmin.mutateAsync(toMosqueAdminCreateRequestBody(values));
+      await createAdmin.mutateAsync(
+        toMosqueAdminCreateRequestBody(values, user?.userId ?? ""),
+      );
       toast.success(t("mosqueAdmins.createSuccess"));
       onOpenChange(false);
     } catch (error) {
@@ -200,13 +206,24 @@ export function MosqueAdminFormDialog({
       ) : (
         <FieldGroup>
           <Field data-invalid={!!createErrors.userId}>
-            <FieldLabel htmlFor="mosque-admin-user-id">
-              {t("mosqueAdmins.userId")}
-            </FieldLabel>
-            <Input
-              id="mosque-admin-user-id"
-              aria-invalid={!!createErrors.userId}
-              {...createForm.register("userId")}
+            <FieldLabel>{t("mosqueAdmins.userId")}</FieldLabel>
+            <Controller
+              name="userId"
+              control={createForm.control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger aria-invalid={!!createErrors.userId}>
+                    <SelectValue placeholder={t("users.selectUser")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(usersPage?.content ?? []).map((userOption) => (
+                      <SelectItem key={userOption.id} value={userOption.id}>
+                        {userOption.fullName ?? formatShortId(userOption.id)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
             {createErrors.userId ? (
               <FieldDescription className="text-destructive">

@@ -5,5 +5,6 @@ export {
   useUpdateCurrentUser,
   useUpdateUser,
   useUser,
+  useUserSearch,
   useUsers,
 } from "./use-users.ts";

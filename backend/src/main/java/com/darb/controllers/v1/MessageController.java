@@ -73,9 +73,10 @@ public class MessageController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<MessageResponse>>> findByCircle(
+            Authentication authentication,
             @Parameter(description = "Circle UUID", required = true) @PathVariable UUID circleId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<MessageResponse> page = messageService.findByCircleId(circleId, pageable);
+        Page<MessageResponse> page = messageService.findByCircleId((UUID) authentication.getPrincipal(), circleId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<MessageResponse>>builder()
                 .success(true)
                 .message("Circle messages retrieved successfully")

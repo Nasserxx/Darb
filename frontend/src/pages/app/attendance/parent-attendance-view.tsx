@@ -19,8 +19,6 @@ import { attendanceApi } from "@/features/attendance/api/attendance-api.ts";
 import { attendanceKeys } from "@/features/attendance/hooks/attendance-keys.ts";
 import { useSubmitExcuse } from "@/features/attendance/hooks/use-attendance.ts";
 import type { AttendanceResponse } from "@/features/attendance/types/index.ts";
-import { circlesApi } from "@/features/circles/api/circles-api.ts";
-import { circleKeys } from "@/features/circles/hooks/query-keys.ts";
 import { useMyChildren } from "@/features/parent-students/hooks/use-parent-students.ts";
 import type { StudentResponse } from "@/features/students/types/index.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
@@ -35,7 +33,6 @@ function childLabel(child: StudentResponse): string {
 }
 
 type ChildAttendanceTableProps = {
-  circleNames: Map<string, string>;
   isLoading: boolean;
   attendanceData: PageResponse<AttendanceResponse> | undefined;
   onSubmitExcuse: (attendanceId: string, absenceReason: string) => void;
@@ -43,7 +40,6 @@ type ChildAttendanceTableProps = {
 };
 
 function ChildAttendanceTable({
-  circleNames,
   isLoading,
   attendanceData,
   onSubmitExcuse,
@@ -63,7 +59,7 @@ function ChildAttendanceTable({
       id: "circle",
       header: t("circles.title"),
       cell: (row: AttendanceResponse) => (
-        <span>{circleNames.get(row.circleId) ?? formatShortId(row.circleId)}</span>
+        <span>{row.circleName ?? formatShortId(row.circleId)}</span>
       ),
     },
     {
@@ -168,37 +164,8 @@ export function ParentAttendanceView() {
     })),
   });
 
-  const allCircleIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const query of attendanceQueries) {
-      for (const row of query.data?.content ?? []) {
-        ids.add(row.circleId);
-      }
-    }
-    return [...ids];
-  }, [attendanceQueries]);
-
-  const circleQueries = useQueries({
-    queries: allCircleIds.map((circleId) => ({
-      queryKey: circleKeys.detail(circleId),
-      queryFn: () => circlesApi.getById(circleId),
-      enabled: Boolean(circleId),
-    })),
-  });
-
-  const circleNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const query of circleQueries) {
-      if (query.data) {
-        map.set(query.data.id, query.data.name);
-      }
-    }
-    return map;
-  }, [circleQueries]);
-
   const attendanceLoading = attendanceQueries.some((query) => query.isLoading);
-  const circlesLoading = circleQueries.some((query) => query.isLoading);
-  const isLoading = childrenLoading || attendanceLoading || circlesLoading;
+  const isLoading = childrenLoading || attendanceLoading;
 
   function handleSubmitExcuse(attendanceId: string, absenceReason: string) {
     submitExcuse.mutate({ id: attendanceId, body: { absenceReason } });
@@ -221,7 +188,6 @@ export function ParentAttendanceView() {
   if (children.length === 1) {
     return (
       <ChildAttendanceTable
-        circleNames={circleNames}
         isLoading={isLoading}
         attendanceData={attendanceQueries[0]?.data}
         onSubmitExcuse={handleSubmitExcuse}
@@ -244,7 +210,6 @@ export function ParentAttendanceView() {
       {children.map((child, index) => (
         <TabsContent key={child.id} value={child.id}>
           <ChildAttendanceTable
-            circleNames={circleNames}
             isLoading={isLoading}
             attendanceData={attendanceQueries[index]?.data}
             onSubmitExcuse={handleSubmitExcuse}

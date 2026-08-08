@@ -9,6 +9,9 @@ export interface MessageResponse {
   senderId: Uuid;
   receiverId: Uuid;
   circleId: Uuid;
+  senderName: string;
+  receiverName: string;
+  circleName: string;
   content: string;
   status: MessageStatus;
   sentAt: Instant;

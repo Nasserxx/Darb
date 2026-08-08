@@ -1,17 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useForm, type UseFormReturn } from "react-hook-form";
+import { Controller, useForm, type UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
+import { UserSearchSelect } from "@/components/shared/user-search-select.tsx";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateStudent,
   useUpdateStudent,
 } from "@/features/students/hooks/use-students.ts";
+import { useMosques } from "@/features/mosques/hooks/use-mosques.ts";
 import {
   studentCreateSchema,
   studentUpdateSchema,
@@ -42,6 +51,7 @@ export function StudentFormDialog({
   const createMutation = useCreateStudent();
   const updateMutation = useUpdateStudent();
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
 
   const createForm = useForm<StudentCreateFormValues>({
     resolver: zodResolver(studentCreateSchema),
@@ -137,11 +147,16 @@ export function StudentFormDialog({
         {!isEdit ? (
           <>
             <Field data-invalid={!!createForm.formState.errors.userId}>
-              <FieldLabel htmlFor="userId">{t("students.userId")}</FieldLabel>
-              <Input
-                id="userId"
-                {...createForm.register("userId")}
-                aria-invalid={!!createForm.formState.errors.userId}
+              <FieldLabel>{t("students.userId")}</FieldLabel>
+              <Controller
+                name="userId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <UserSearchSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                )}
               />
               {createForm.formState.errors.userId ? (
                 <p className="text-sm text-destructive">
@@ -150,11 +165,26 @@ export function StudentFormDialog({
               ) : null}
             </Field>
             <Field data-invalid={!!createForm.formState.errors.mosqueId}>
-              <FieldLabel htmlFor="mosqueId">{t("students.mosqueId")}</FieldLabel>
-              <Input
-                id="mosqueId"
-                {...createForm.register("mosqueId")}
-                aria-invalid={!!createForm.formState.errors.mosqueId}
+              <FieldLabel>{t("students.mosqueId")}</FieldLabel>
+              <Controller
+                name="mosqueId"
+                control={createForm.control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      aria-invalid={!!createForm.formState.errors.mosqueId}
+                    >
+                      <SelectValue placeholder={t("teachers.selectMosque")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(mosquesPage?.content ?? []).map((mosque) => (
+                        <SelectItem key={mosque.id} value={mosque.id}>
+                          {mosque.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
               {createForm.formState.errors.mosqueId ? (
                 <p className="text-sm text-destructive">

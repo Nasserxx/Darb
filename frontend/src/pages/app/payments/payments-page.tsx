@@ -42,6 +42,7 @@ import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import type {
@@ -74,10 +75,6 @@ const PAYMENT_CYCLES: PaymentCycle[] = [
   "ANNUAL",
   "ONE_TIME",
 ];
-
-function shortId(value: string): string {
-  return `${value.slice(0, 8)}…`;
-}
 
 export function PaymentsPage() {
   const { t } = useTranslation("app");
@@ -113,7 +110,8 @@ export function PaymentsPage() {
       {
         id: "student",
         header: t("payments.student"),
-        cell: (row: PaymentResponse) => shortId(row.studentId),
+        cell: (row: PaymentResponse) =>
+          row.studentName ?? formatShortId(row.studentId),
       },
       {
         id: "amount",
@@ -316,7 +314,7 @@ function PaymentCreateDialog({
                 <SelectContent>
                   {filteredStudents.map((student) => (
                     <SelectItem key={student.id} value={student.id}>
-                      {shortId(student.id)}
+                      {student.fullName ?? formatShortId(student.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>

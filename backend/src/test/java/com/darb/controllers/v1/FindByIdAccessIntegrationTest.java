@@ -152,7 +152,37 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                         .header("Authorization", "Bearer " + parentToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.id").value(linkId));
+                .andExpect(jsonPath("$.data.id").value(linkId))
+                .andExpect(jsonPath("$.data.parentName").isNotEmpty())
+                .andExpect(jsonPath("$.data.studentName").isNotEmpty());
+    }
+
+    @Test
+    void parent_canGetMyChildren_exposesStudentFullName() throws Exception {
+        String adminEmail = "admin-my-children-findbyid@test.darb";
+        String parentEmail = "parent-my-children-findbyid@test.darb";
+        registerMosqueAdmin(adminEmail);
+        registerParent(parentEmail);
+
+        String adminToken = login(adminEmail);
+        String parentToken = login(parentEmail);
+
+        String mosqueId = onboardMosque(adminToken, "Mosque My Children");
+
+        registerStudent("student-my-children-findbyid@test.darb");
+        String studentUserId = userRepository.findByEmail("student-my-children-findbyid@test.darb")
+                .orElseThrow().getId().toString();
+        String studentId = createStudent(adminToken, studentUserId, mosqueId);
+
+        String parentUserId = userRepository.findByEmail(parentEmail).orElseThrow().getId().toString();
+        createParentStudentLink(adminToken, parentUserId, studentId);
+
+        mockMvc.perform(get("/api/v1/parent-students/my-children")
+                        .header("Authorization", "Bearer " + parentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].id").value(studentId))
+                .andExpect(jsonPath("$.data[0].fullName").value("Student User"));
     }
 
     @Test
@@ -256,6 +286,26 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void mosqueAdmin_canCreatePayment_exposesStudentName() throws Exception {
+        String adminEmail = "admin-payment-create@test.darb";
+        registerMosqueAdmin(adminEmail);
+        String adminToken = login(adminEmail);
+        String mosqueId = onboardMosque(adminToken, "Mosque Payment Create");
+
+        registerStudent("student-payment-create@test.darb");
+        registerTeacher("teacher-payment-create@test.darb");
+        String studentUserId = userRepository.findByEmail("student-payment-create@test.darb")
+                .orElseThrow().getId().toString();
+        String teacherUserId = userRepository.findByEmail("teacher-payment-create@test.darb")
+                .orElseThrow().getId().toString();
+        String studentId = createStudent(adminToken, studentUserId, mosqueId);
+        String teacherId = createTeacher(adminToken, teacherUserId, mosqueId);
+        String circleId = createCircle(adminToken, mosqueId, teacherId, "Circle Payment Create");
+
+        createPayment(adminToken, studentId, circleId, mosqueId);
     }
 
     private void registerMosqueAdmin(String email) throws Exception {
@@ -422,6 +472,8 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                                 }
                                 """.formatted(studentId, circleId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.studentName").value("Student User"))
+                .andExpect(jsonPath("$.data.circleName").isNotEmpty())
                 .andReturn();
 
         return com.jayway.jsonpath.JsonPath.read(
@@ -443,6 +495,33 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                                 }
                                 """.formatted(enrollmentId, circleId)))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.studentName").value("Student User"))
+                .andExpect(jsonPath("$.data.circleName").isNotEmpty())
+                .andReturn();
+
+        return com.jayway.jsonpath.JsonPath.read(
+                result.getResponse().getContentAsString(),
+                "$.data.id");
+    }
+
+    private String createPayment(String adminToken, String studentId, String circleId, String mosqueId) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/payments")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "studentId": "%s",
+                                  "circleId": "%s",
+                                  "mosqueId": "%s",
+                                  "amount": 150.00,
+                                  "status": "PENDING",
+                                  "method": "CASH",
+                                  "cycle": "MONTHLY",
+                                  "dueDate": "2026-08-01"
+                                }
+                                """.formatted(studentId, circleId, mosqueId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.studentName").value("Student User"))
                 .andReturn();
 
         return com.jayway.jsonpath.JsonPath.read(

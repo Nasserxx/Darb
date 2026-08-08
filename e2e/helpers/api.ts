@@ -2,7 +2,7 @@ const API_BASE_URL =
   process.env.API_URL ??
   process.env.API_BASE_URL ??
   process.env.VITE_API_URL ??
-  "http://localhost:8080";
+  "http://localhost:8089";
 
 export const E2E_PASSWORD = "P@ssw0rd1!";
 export const TEST_PASSWORD = E2E_PASSWORD;

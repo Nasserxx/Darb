@@ -38,6 +38,7 @@ import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import { canManageGoals } from "@/lib/navigation/role-permissions.ts";
@@ -88,7 +89,10 @@ export function StudentGoalsPage() {
             enrollment.studentId === studentId &&
             enrollment.status === "ACTIVE",
         )
-        .map((enrollment) => enrollment.circleId),
+        .map((enrollment) => ({
+          circleId: enrollment.circleId,
+          circleName: enrollment.circleName,
+        })),
     [enrollmentsPage?.content, studentId],
   );
 
@@ -103,7 +107,7 @@ export function StudentGoalsPage() {
     resolver: zodResolver(goalCreateSchema),
     defaultValues: {
       studentId: studentId ?? "",
-      circleId: enrolledCircles[0] ?? "",
+      circleId: enrolledCircles[0]?.circleId ?? "",
       title: "",
       targetSurah: undefined,
       targetJuz: undefined,
@@ -248,9 +252,9 @@ export function StudentGoalsPage() {
                       <SelectValue placeholder={t("onboarding.selectPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {enrolledCircles.map((circleId) => (
-                        <SelectItem key={circleId} value={circleId}>
-                          {circleId.slice(0, 8)}…
+                      {enrolledCircles.map((circle) => (
+                        <SelectItem key={circle.circleId} value={circle.circleId}>
+                          {circle.circleName ?? formatShortId(circle.circleId)}
                         </SelectItem>
                       ))}
                     </SelectContent>

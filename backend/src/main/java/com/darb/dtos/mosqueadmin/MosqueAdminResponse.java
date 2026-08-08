@@ -24,8 +24,14 @@ public class MosqueAdminResponse {
     @Schema(description = "Associated user ID")
     private UUID userId;
 
+    @Schema(description = "Full name of the admin's user")
+    private String userName;
+
     @Schema(description = "Administered mosque ID")
     private UUID mosqueId;
+
+    @Schema(description = "Name of the administered mosque")
+    private String mosqueName;
 
     @Schema(description = "Permission level", example = "FULL_ACCESS")
     private AdminPermission permission;

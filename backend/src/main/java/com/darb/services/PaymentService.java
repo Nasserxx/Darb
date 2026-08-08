@@ -140,6 +140,7 @@ public class PaymentService {
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .studentId(payment.getStudent().getId())
+                .studentName(payment.getStudent().getUser().getFullName())
                 .circleId(payment.getCircle().getId())
                 .mosqueId(payment.getMosque().getId())
                 .amount(payment.getAmount())
