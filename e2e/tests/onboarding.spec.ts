@@ -46,6 +46,7 @@ test.describe("Onboarding", () => {
     const mosqueName = `Founder Mosque ${Date.now()}`;
     await page.locator("#onboard-mosque-name").fill(mosqueName);
     await page.locator("#onboard-mosque-city").fill("Riyadh");
+    await page.locator("#onboard-mosque-address-state").fill("Riyadh Province");
     await page.getByRole("button", { name: "Create mosque" }).click();
 
     await expect(page.getByText("Your mosque is ready.", { exact: true }).first()).toBeVisible();

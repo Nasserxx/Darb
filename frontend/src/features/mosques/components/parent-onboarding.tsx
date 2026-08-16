@@ -1,4 +1,4 @@
-import { Building2Icon } from "lucide-react";
+import { Building2Icon, CheckCircle2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -21,7 +21,6 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { parentStudentsApi } from "@/features/parent-students/api/parent-students-api.ts";
-import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 
 type ParentOnboardingProps = {
   onComplete: () => void;
@@ -29,10 +28,10 @@ type ParentOnboardingProps = {
 
 export function ParentOnboarding({ onComplete }: ParentOnboardingProps) {
   const { t } = useTranslation("app");
-  const { refreshProfile } = useWorkspace();
   const [inviteCode, setInviteCode] = useState("");
   const [debouncedCode, setDebouncedCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linked, setLinked] = useState(false);
   const [preview, setPreview] = useState<{ mosqueName: string; studentName: string } | null>(null);
   const [previewError, setPreviewError] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -91,8 +90,7 @@ export function ParentOnboarding({ onComplete }: ParentOnboardingProps) {
     try {
       await parentStudentsApi.linkByInviteCode({ inviteCode: inviteCode.trim() });
       toast.success(t("onboarding.success"));
-      await refreshProfile();
-      onComplete();
+      setLinked(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("onboarding.error"));
     } finally {
@@ -101,6 +99,35 @@ export function ParentOnboarding({ onComplete }: ParentOnboardingProps) {
   }
 
   const isValid = debouncedCode.length >= 8 && !previewError && preview !== null;
+
+  if (linked) {
+    return (
+      <Card className="overflow-hidden border-border/80 shadow-sm">
+        <CardHeader className="border-b border-border/60 bg-card">
+          <CardTitle className="font-serif text-2xl">
+            {t("onboarding.parent.linkedTitle")}
+          </CardTitle>
+          <CardDescription>
+            {t("onboarding.parent.linkedDescription")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <CheckCircle2Icon className="shrink-0 text-primary" />
+              <div className="flex flex-col gap-1">
+                <p className="font-medium">{preview?.mosqueName}</p>
+                <p className="text-sm text-muted-foreground">{preview?.studentName}</p>
+              </div>
+            </div>
+            <Button type="button" onClick={onComplete}>
+              {t("onboarding.parent.continue")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden border-border/80 shadow-sm">

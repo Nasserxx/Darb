@@ -63,16 +63,8 @@ export const mosquesApi = {
     );
   },
 
-  search: async (q: string, city?: string): Promise<MosqueSearchResult[]> => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (city) params.set("city", city);
-    const response = await apiFetch<ApiResponse<MosqueSearchResult[]>>(
-      `${BASE_PATH}/search?${params.toString()}`,
-      { auth: true },
-    );
-    return response.data ?? [];
-  },
+  search: (params: PageParams = {}) =>
+    fetchPage<MosqueSearchResult>(`${BASE_PATH}/search`, params),
 
   createJoinRequest: (mosqueId: string) =>
     mutateData<MemberJoinRequestResponse>(`${BASE_PATH}/join-requests`, {
@@ -89,6 +81,22 @@ export const mosquesApi = {
 
   getInviteCodes: () =>
     fetchData<MosqueInviteCodesResponse>(`${BASE_PATH}/invite-codes`),
+
+  getInviteCodesForMosque: (id: string) =>
+    fetchData<MosqueInviteCodesResponse>(`${BASE_PATH}/${id}/invite-codes`),
+
+  rotateInviteCodes: (id: string) =>
+    mutateData<MosqueInviteCodesResponse>(
+      `${BASE_PATH}/${id}/invite-codes/rotate`,
+      { method: "POST" },
+    ),
+
+  reactivate: async (id: string): Promise<void> => {
+    await apiFetch<ApiResponse<void>>(`${BASE_PATH}/${id}/reactivate`, {
+      method: "POST",
+      auth: true,
+    });
+  },
 
   update: (id: string, body: MosqueUpdateRequest) =>
     mutateData<MosqueResponse>(`${BASE_PATH}/${id}`, {

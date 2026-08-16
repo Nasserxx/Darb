@@ -18,8 +18,13 @@
                 "profile":  "Profile",
                 "progress":  "My progress",
                 "account":  "Account",
-                "myTeacher":  "My Teacher"
+                "myTeacher":  "My Teacher",
+                "mosqueSettings":  "Settings"
             },
+    "dashboard":  {
+                      "myMosque":  "My Mosque",
+                      "myMosqueDescription":  "Your mosque and community"
+                  },
     "empty":  {
                   "title":  "Nothing here yet",
                   "description":  "Get started by creating your first record."
@@ -79,6 +84,7 @@
                                       "searchLabel":  "Search mosques",
                                       "searchPlaceholder":  "Mosque name…",
                                       "searchButton":  "Search",
+                                      "cityPlaceholder":  "Filter by city…",
                                       "requestJoin":  "Request to join",
                                       "requestSent":  "Join request sent. Waiting for admin approval.",
                                       "noResults":  "No mosques matched your search.",
@@ -95,7 +101,10 @@
                                       "joinSubmit":  "Link to my child",
                                       "joinPreview":  "Linking to",
                                       "previewLoading":  "Looking up invite code…",
-                                      "invalidCode":  "No student found for this invite code."
+                                      "invalidCode":  "No student found for this invite code.",
+                                      "linkedTitle":  "Parent link confirmed",
+                                      "linkedDescription":  "You are now linked to your child's mosque.",
+                                      "continue":  "Continue"
                                   }
                    },
     "admin":  {
@@ -161,9 +170,20 @@
                     "name":  "Name",
                     "city":  "City",
                     "address":  "Address",
+                    "addressNotProvided":  "Address not provided",
                     "phone":  "Phone",
                     "email":  "Email",
                     "timezone":  "Timezone",
+                    "timezonePlaceholder":  "Select a timezone…",
+                    "timezoneSearchPlaceholder":  "Search timezones…",
+                    "country":  "Country",
+                    "postalCode":  "Postal code",
+                    "street":  "Street",
+                    "houseNumber":  "House number",
+                    "state":  "State / Region",
+                    "sectionGeneral":  "General",
+                    "sectionLocation":  "Location",
+                    "sectionContactTimezone":  "Contact & timezone",
                     "settings":  "Settings",
                     "status":  "Status",
                     "active":  "Active",
@@ -171,7 +191,28 @@
                     "actions":  "Actions",
                     "createSuccess":  "Mosque created.",
                     "updateSuccess":  "Mosque updated.",
-                    "deleteSuccess":  "Mosque deleted."
+                    "deleteSuccess":  "Mosque deleted.",
+                    "openDesk":  "Open desk",
+                    "deactivate":  "Deactivate",
+                    "deactivateTitle":  "Deactivate this mosque?",
+                    "deactivateDescription":  "The mosque will be deactivated and hidden from active use. You can reactivate it later.",
+                    "deactivateSuccess":  "Mosque deactivated.",
+                    "reactivate":  "Reactivate",
+                    "reactivateSuccess":  "Mosque reactivated.",
+                    "empty":  "No mosques found.",
+                    "emptyFiltered":  "No mosques match your filters.",
+                    "searchPlaceholder":  "Search by mosque name…",
+                    "allCountries":  "All countries",
+                    "filterCity":  "Filter by city…",
+                    "clearFilters":  "Clear filters",
+                    "needOnboardingTitle":  "No mosque assigned",
+                    "needOnboarding":  "Your account is not linked to a mosque yet. Complete onboarding to get started.",
+                    "details":  "Mosque details",
+                    "inviteCodesDescription":  "Share these codes with members to join your mosque.",
+                    "rotateCodes":  "Rotate codes",
+                    "rotateSuccess":  "Invite codes rotated.",
+                    "inviteCodesUnavailable":  "Invite codes are only available while the mosque is active.",
+                    "backToList":  "Back to mosques"
                 },
     "mosqueAdmins":  {
                          "title":  "Mosque admins",
@@ -239,7 +280,13 @@
                      "status":  "Status",
                      "createSuccess":  "Student created.",
                      "updateSuccess":  "Student updated.",
-                     "deleteSuccess":  "Student deleted."
+                     "deleteSuccess":  "Student deleted.",
+                     "parentInviteCode":  "Parent invite code",
+                     "parentInviteHint":  "Share this code with the student's parent so they can link their account.",
+                     "copyInviteCode":  "Copy code",
+                     "inviteCodeCopied":  "Invite code copied.",
+                     "regenerateInviteCode":  "Regenerate code",
+                     "regenerateSuccess":  "Invite code regenerated."
                  },
     "parentStudents":  {
                            "title":  "Parent links",

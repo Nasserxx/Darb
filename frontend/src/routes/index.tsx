@@ -20,6 +20,7 @@ import {
   LoginPage,
   MessagesPage,
   MosqueAdminsPage,
+  MosqueDetailPage,
   MosquesPage,
   NotificationsPage,
   OnboardingPage,
@@ -298,7 +299,19 @@ export const router = createBrowserRouter([
         path: "mosques",
         element: (
           <ProtectedAppPage>
-            <MosquesPage />
+            <RoleRoute allowed={["SUPER_ADMIN", "MOSQUE_ADMIN"]}>
+              <MosquesPage />
+            </RoleRoute>
+          </ProtectedAppPage>
+        ),
+      },
+      {
+        path: "mosques/:id",
+        element: (
+          <ProtectedAppPage>
+            <RoleRoute allowed={["SUPER_ADMIN", "MOSQUE_ADMIN"]}>
+              <MosqueDetailPage />
+            </RoleRoute>
           </ProtectedAppPage>
         ),
       },

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
+import { AddressText } from "@/components/address-text.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import {
@@ -21,8 +22,9 @@ import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { DEFAULT_TIME_ZONE } from "@/lib/timezones.ts";
 
-import { MosqueCreateFields } from "./mosque-create-fields.tsx";
+import { MosqueFields } from "./mosque-fields.tsx";
 import {
   mosqueCreateSchema,
   toMosqueCreateRequestBody,
@@ -53,12 +55,16 @@ export function MosqueAdminOnboarding({ onComplete }: MosqueAdminOnboardingProps
     resolver: zodResolver(mosqueCreateSchema),
     defaultValues: {
       name: "",
-      address: "",
       city: "",
       phone: "",
       email: "",
       logoUrl: "",
-      timezone: "",
+      timezone: DEFAULT_TIME_ZONE,
+      addressCountry: "",
+      addressPostalCode: "",
+      addressStreet: "",
+      addressHouseNumber: "",
+      addressState: "",
     },
   });
 
@@ -175,9 +181,11 @@ export function MosqueAdminOnboarding({ onComplete }: MosqueAdminOnboardingProps
                 void createForm.handleSubmit(handleCreateSubmit)();
               }}
             >
-              <MosqueCreateFields
+              <MosqueFields
                 register={createForm.register}
                 errors={createForm.formState.errors}
+                watch={createForm.watch}
+                setValue={createForm.setValue}
                 idPrefix="onboard-mosque"
               />
               <Button type="submit" disabled={onboardMosque.isPending}>
@@ -230,7 +238,12 @@ export function MosqueAdminOnboarding({ onComplete }: MosqueAdminOnboardingProps
                   <Alert>
                     <Building2Icon />
                     <AlertTitle>{t("onboarding.mosqueAdmin.joinPreview")}</AlertTitle>
-                    <AlertDescription>{joinPreview.data.mosqueName}</AlertDescription>
+                    <AlertDescription>
+                      <div className="flex flex-col gap-1">
+                        {joinPreview.data.mosqueName}
+                        <AddressText mosque={joinPreview.data} />
+                      </div>
+                    </AlertDescription>
                   </Alert>
                 ) : null
               ) : null}

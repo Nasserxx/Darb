@@ -99,6 +99,11 @@ export const MosquesPage = lazy(() =>
     default: m.MosquesPage,
   })),
 );
+export const MosqueDetailPage = lazy(() =>
+  import("../pages/app/mosques/mosque-detail-page.tsx").then((m) => ({
+    default: m.MosqueDetailPage,
+  })),
+);
 export const MosqueAdminsPage = lazy(() =>
   import("../pages/app/mosque-admins/mosque-admins-page.tsx").then((m) => ({
     default: m.MosqueAdminsPage,

@@ -388,7 +388,8 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "%s",
-                                  "city": "Riyadh"
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """.formatted(name)))
                 .andExpect(status().isCreated())

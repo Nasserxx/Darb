@@ -54,7 +54,8 @@ class TeacherStudentOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "Onboard Test Mosque",
-                                  "city": "Riyadh"
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())

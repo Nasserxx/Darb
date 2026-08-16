@@ -6,18 +6,12 @@ import { toast } from "sonner";
 
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
 import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
+import { DEFAULT_TIME_ZONE } from "@/lib/timezones.ts";
 
-import { MosqueCreateFields } from "./mosque-create-fields.tsx";
+import { MosqueFields } from "./mosque-fields.tsx";
 
 import {
   mosqueCreateSchema,
@@ -49,12 +43,16 @@ export function MosqueFormDialog({ open, onOpenChange, mosque }: MosqueFormDialo
     resolver: zodResolver(mosqueCreateSchema),
     defaultValues: {
       name: "",
-      address: "",
       city: "",
       phone: "",
       email: "",
       logoUrl: "",
-      timezone: "",
+      timezone: DEFAULT_TIME_ZONE,
+      addressCountry: "",
+      addressPostalCode: "",
+      addressStreet: "",
+      addressHouseNumber: "",
+      addressState: "",
     },
   });
 
@@ -62,13 +60,16 @@ export function MosqueFormDialog({ open, onOpenChange, mosque }: MosqueFormDialo
     resolver: zodResolver(mosqueUpdateSchema),
     defaultValues: {
       name: "",
-      address: "",
       city: "",
       phone: "",
       email: "",
       logoUrl: "",
       timezone: "",
-      settings: "",
+      addressCountry: "",
+      addressPostalCode: "",
+      addressStreet: "",
+      addressHouseNumber: "",
+      addressState: "",
     },
   });
 
@@ -81,13 +82,16 @@ export function MosqueFormDialog({ open, onOpenChange, mosque }: MosqueFormDialo
     if (mosque) {
       editForm.reset({
         name: mosque.name,
-        address: mosque.address ?? "",
         city: mosque.city ?? "",
         phone: mosque.phone ?? "",
         email: mosque.email ?? "",
         logoUrl: mosque.logoUrl ?? "",
         timezone: mosque.timezone ?? "",
-        settings: mosque.settings ?? "",
+        addressCountry: mosque.addressCountry ?? "",
+        addressPostalCode: mosque.addressPostalCode ?? "",
+        addressStreet: mosque.addressStreet ?? "",
+        addressHouseNumber: mosque.addressHouseNumber ?? "",
+        addressState: mosque.addressState ?? "",
       });
     } else {
       createForm.reset();
@@ -145,106 +149,21 @@ export function MosqueFormDialog({ open, onOpenChange, mosque }: MosqueFormDialo
       }}
     >
       {isEdit ? (
-        <FieldGroup>
-          <Field data-invalid={!!editErrors.name}>
-            <FieldLabel htmlFor="mosque-name">{t("mosques.name")}</FieldLabel>
-            <Input
-              id="mosque-name"
-              aria-invalid={!!editErrors.name}
-              {...editForm.register("name")}
-            />
-            {editErrors.name ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.name.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.city}>
-            <FieldLabel htmlFor="mosque-city">{t("mosques.city")}</FieldLabel>
-            <Input
-              id="mosque-city"
-              aria-invalid={!!editErrors.city}
-              {...editForm.register("city")}
-            />
-            {editErrors.city ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.city.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.address}>
-            <FieldLabel htmlFor="mosque-address">{t("mosques.address")}</FieldLabel>
-            <Input
-              id="mosque-address"
-              aria-invalid={!!editErrors.address}
-              {...editForm.register("address")}
-            />
-            {editErrors.address ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.address.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.phone}>
-            <FieldLabel htmlFor="mosque-phone">{t("mosques.phone")}</FieldLabel>
-            <Input
-              id="mosque-phone"
-              aria-invalid={!!editErrors.phone}
-              {...editForm.register("phone")}
-            />
-            {editErrors.phone ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.phone.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.email}>
-            <FieldLabel htmlFor="mosque-email">{t("mosques.email")}</FieldLabel>
-            <Input
-              id="mosque-email"
-              type="email"
-              aria-invalid={!!editErrors.email}
-              {...editForm.register("email")}
-            />
-            {editErrors.email ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.email.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.timezone}>
-            <FieldLabel htmlFor="mosque-timezone">{t("mosques.timezone")}</FieldLabel>
-            <Input
-              id="mosque-timezone"
-              aria-invalid={!!editErrors.timezone}
-              {...editForm.register("timezone")}
-            />
-            {editErrors.timezone ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.timezone.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-
-          <Field data-invalid={!!editErrors.settings}>
-            <FieldLabel htmlFor="mosque-settings">{t("mosques.settings")}</FieldLabel>
-            <Input id="mosque-settings" {...editForm.register("settings")} />
-            {editErrors.settings ? (
-              <FieldDescription className="text-destructive">
-                {editErrors.settings.message}
-              </FieldDescription>
-            ) : null}
-          </Field>
-        </FieldGroup>
+        <MosqueFields
+          register={editForm.register}
+          errors={editErrors}
+          watch={editForm.watch}
+          setValue={editForm.setValue}
+          idPrefix="mosque"
+          timezoneCustomValue={mosque?.timezone ?? null}
+        />
       ) : (
-        <MosqueCreateFields
+        <MosqueFields
           register={createForm.register}
           errors={createErrors}
+          watch={createForm.watch}
+          setValue={createForm.setValue}
+          idPrefix="mosque"
         />
       )}
     </EntityFormDialog>

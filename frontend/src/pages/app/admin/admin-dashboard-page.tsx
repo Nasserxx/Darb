@@ -51,6 +51,7 @@ export function AdminDashboardPage() {
   const inviteCodesQuery = useQuery({
     queryKey: ["mosques", "invite-codes"],
     queryFn: () => mosquesApi.getInviteCodes(),
+    enabled: !isSuperAdmin,
   });
 
   const approveJoinRequest = useMutation({
@@ -208,9 +209,9 @@ export function AdminDashboardPage() {
                 {
                   id: "actions",
                   header: t("actions.view"),
-                  cell: () => (
+                  cell: (row) => (
                     <Button size="sm" variant="outline" asChild>
-                      <Link to={`/${localePrefix}/mosques`}>
+                      <Link to={`/${localePrefix}/mosques/${row.mosqueId}`}>
                         {t("admin.stuckWork.openMosqueDesk")}
                       </Link>
                     </Button>
@@ -259,48 +260,50 @@ export function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("admin.sections.inviteCodes")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {inviteCodesQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">{t("common:loading")}</p>
-          ) : (
-            ["adminInviteCode", "teacherInviteCode", "studentInviteCode"].map((key) => {
-              const labelKey =
-                key === "adminInviteCode"
-                  ? "admin"
-                  : key === "teacherInviteCode"
-                    ? "teacher"
-                    : "student";
-              const code = inviteCodesQuery.data?.[key as keyof typeof inviteCodesQuery.data];
-              return (
-                <div
-                  key={key}
-                  className="flex flex-col gap-2 rounded-lg border border-border/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium">
-                      {t(`admin.inviteCodes.${labelKey}`)}
-                    </p>
-                    <p className="font-mono text-sm">{code ?? "—"}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!code}
-                    onClick={() => void copyCode(code as string | undefined)}
+      {!isSuperAdmin ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("admin.sections.inviteCodes")}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {inviteCodesQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">{t("common:loading")}</p>
+            ) : (
+              ["adminInviteCode", "teacherInviteCode", "studentInviteCode"].map((key) => {
+                const labelKey =
+                  key === "adminInviteCode"
+                    ? "admin"
+                    : key === "teacherInviteCode"
+                      ? "teacher"
+                      : "student";
+                const code = inviteCodesQuery.data?.[key as keyof typeof inviteCodesQuery.data];
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-col gap-2 rounded-lg border border-border/70 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <CopyIcon data-icon="inline-start" />
-                    {t("admin.inviteCodes.copy")}
-                  </Button>
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium">
+                        {t(`admin.inviteCodes.${labelKey}`)}
+                      </p>
+                      <p className="font-mono text-sm">{code ?? "—"}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!code}
+                      onClick={() => void copyCode(code as string | undefined)}
+                    >
+                      <CopyIcon data-icon="inline-start" />
+                      {t("admin.inviteCodes.copy")}
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {!isSuperAdmin ? (
       <Card>

@@ -89,8 +89,45 @@ export function useDeleteMosque() {
 
   return useMutation({
     mutationFn: (id: string) => mosquesApi.delete(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: mosqueKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: mosqueKeys.detail(id) });
+    },
+  });
+}
+
+export function useMosqueInviteCodes(
+  id: string,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: mosqueKeys.inviteCodes(id),
+    queryFn: () => mosquesApi.getInviteCodesForMosque(id),
+    enabled: (options?.enabled ?? true) && Boolean(id),
+  });
+}
+
+export function useRotateInviteCodes(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => mosquesApi.rotateInviteCodes(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: mosqueKeys.inviteCodes(id),
+      });
+    },
+  });
+}
+
+export function useReactivateMosque() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => mosquesApi.reactivate(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: mosqueKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: mosqueKeys.detail(id) });
     },
   });
 }
