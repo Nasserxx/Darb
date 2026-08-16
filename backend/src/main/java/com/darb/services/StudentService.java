@@ -23,13 +23,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class StudentService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Base64.Encoder INVITE_CODE_ENCODER = Base64.getUrlEncoder().withoutPadding();
+    private static final int INVITE_CODE_BYTE_LENGTH = 9;
 
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
@@ -73,13 +79,18 @@ public class StudentService {
             user.setFullName(request.getFullName());
         }
 
+        String parentInviteCode = request.getParentInviteCode();
+        if (parentInviteCode == null || parentInviteCode.isBlank()) {
+            parentInviteCode = generateParentInviteCode();
+        }
+
         Student student = Student.builder()
                 .user(user)
                 .mosque(mosque)
                 .nationalId(request.getNationalId())
                 .medicalNotes(request.getMedicalNotes())
                 .memorizedJuz(request.getMemorizedJuz())
-                .parentInviteCode(request.getParentInviteCode())
+                .parentInviteCode(parentInviteCode)
                 .totalAbsences(0)
                 .totalLateArrivals(0)
                 .status(EnrollmentStatus.ACTIVE)
@@ -169,6 +180,20 @@ public class StudentService {
         mosqueAccessService.assertCanAccessStudent(callerId, student);
         student.setStatus(EnrollmentStatus.WITHDRAWN);
         studentRepository.save(student);
+    }
+
+    @Transactional
+    public StudentResponse regenerateParentInviteCode(UUID callerId, UUID studentId) {
+        Student student = findEntityOrThrow(studentId);
+        mosqueAccessService.assertCanAccessStudent(callerId, student);
+        student.setParentInviteCode(generateParentInviteCode());
+        return toResponse(studentRepository.save(student));
+    }
+
+    private static String generateParentInviteCode() {
+        byte[] bytes = new byte[INVITE_CODE_BYTE_LENGTH];
+        SECURE_RANDOM.nextBytes(bytes);
+        return INVITE_CODE_ENCODER.encodeToString(bytes);
     }
 
     private Student findEntityOrThrow(UUID id) {

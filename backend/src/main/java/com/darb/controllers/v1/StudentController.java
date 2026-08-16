@@ -193,4 +193,27 @@ public class StudentController {
                 .message("Student deactivated successfully")
                 .build());
     }
+
+    @PostMapping("/{id}/parent-invite-code")
+    @Operation(
+            summary = "Regenerate a student's parent invite code",
+            description = "Replaces the student's parent invite code with a freshly generated one. Accessible by SUPER_ADMIN, MOSQUE_ADMIN, and TEACHER."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Parent invite code regenerated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid UUID format"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Student not found")
+    })
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<StudentResponse>> regenerateParentInviteCode(
+            Authentication authentication,
+            @Parameter(description = "Student UUID", required = true) @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.<StudentResponse>builder()
+                .success(true)
+                .message("Parent invite code regenerated successfully")
+                .data(studentService.regenerateParentInviteCode((UUID) authentication.getPrincipal(), id))
+                .build());
+    }
 }

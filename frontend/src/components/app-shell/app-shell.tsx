@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { translateRole } from "@/i18n/index.ts";
-import { getNavItemsForRole } from "@/lib/navigation/app-nav.ts";
+import { getNavItemsForRole, mosqueNavMeta } from "@/lib/navigation/app-nav.ts";
 import { cn } from "@/lib/utils.ts";
 import { LogOutIcon, UserIcon } from "lucide-react";
 
@@ -61,15 +61,19 @@ export function AppShell({ children }: AppShellProps) {
                 {navItems.map((item) => {
                   const href = `/${localePrefix}${item.href}`;
                   const isActive = location.pathname.startsWith(href);
+                  const navMeta =
+                    item.id === "mosques" && user ? mosqueNavMeta(user.role) : null;
+                  const labelKey = navMeta?.labelKey ?? item.labelKey;
+                  const NavIcon = navMeta?.icon ?? item.icon;
                   return (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
                         isActive={isActive}
                         render={<Link to={href} />}
-                        tooltip={t(item.labelKey)}
+                        tooltip={t(labelKey)}
                       >
-                        <item.icon />
-                        <span>{t(item.labelKey)}</span>
+                        <NavIcon />
+                        <span>{t(labelKey)}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );

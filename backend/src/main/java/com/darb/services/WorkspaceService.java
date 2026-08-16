@@ -110,6 +110,8 @@ public class WorkspaceService {
         return WorkspaceProfileResponse.builder()
                 .profileId(userId)
                 .parentStudentIds(studentIds)
+                .mosqueId(links.get(0).getStudent().getMosque().getId())
+                .mosqueName(links.get(0).getStudent().getMosque().getName())
                 .membershipStatus(MembershipStatus.ASSIGNED)
                 .build();
     }

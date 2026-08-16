@@ -53,6 +53,7 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                                 {
                                   "name": "Founder Mosque",
                                   "city": "Riyadh",
+                                  "addressState": "Riyadh Province",
                                   "timezone": "Asia/Riyadh"
                                 }
                                 """))
@@ -86,7 +87,8 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "Shared Mosque",
-                                  "city": "Jeddah"
+                                  "city": "Jeddah",
+                                  "addressState": "Makkah Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -135,7 +137,9 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "First Mosque"
+                                  "name": "First Mosque",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated());
@@ -145,7 +149,9 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Second Mosque"
+                                  "name": "Second Mosque",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isForbidden())
@@ -181,7 +187,9 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Preview Block Mosque"
+                                  "name": "Preview Block Mosque",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -209,7 +217,9 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Leak Check Mosque"
+                                  "name": "Leak Check Mosque",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -272,10 +282,70 @@ class MosqueOnboardIntegrationTest extends PostgresIntegrationTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Should Fail"
+                                  "name": "Should Fail",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void onboard_withoutTimezone_defaultsToAsiaRiyadh() throws Exception {
+        String email = "founder-default-tz@test.darb";
+        registerMosqueAdmin(email);
+        String token = login(email);
+
+        mockMvc.perform(post("/api/v1/mosques/onboard")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Default Timezone Mosque",
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.mosque.timezone").value("Asia/Riyadh"));
+    }
+
+    @Test
+    void onboard_missingCity_returns400() throws Exception {
+        String email = "founder-no-city@test.darb";
+        registerMosqueAdmin(email);
+        String token = login(email);
+
+        mockMvc.perform(post("/api/v1/mosques/onboard")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "No City Mosque",
+                                  "addressState": "Riyadh Province"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void onboard_missingAddressState_returns400() throws Exception {
+        String email = "founder-no-state@test.darb";
+        registerMosqueAdmin(email);
+        String token = login(email);
+
+        mockMvc.perform(post("/api/v1/mosques/onboard")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "No State Mosque",
+                                  "city": "Riyadh"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     private void registerMosqueAdmin(String email) throws Exception {

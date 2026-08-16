@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,7 +53,8 @@ class MosqueMemberJoinRequestIntegrationTest extends PostgresIntegrationTestBase
                         .content("""
                                 {
                                   "name": "Join Request Mosque",
-                                  "city": "Riyadh"
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -130,10 +132,11 @@ class MosqueMemberJoinRequestIntegrationTest extends PostgresIntegrationTestBase
         mockMvc.perform(get("/api/v1/mosques/search?q=Join")
                         .header("Authorization", "Bearer " + teacherToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].name").value("Join Request Mosque"))
-                .andExpect(jsonPath("$.data[0].city").value("Riyadh"))
-                .andExpect(jsonPath("$.data[0].phone").doesNotExist())
-                .andExpect(jsonPath("$.data[0].email").doesNotExist());
+                .andExpect(jsonPath("$.data.totalElements", greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("Join Request Mosque"))
+                .andExpect(jsonPath("$.data.content[0].city").value("Riyadh"))
+                .andExpect(jsonPath("$.data.content[0].phone").doesNotExist())
+                .andExpect(jsonPath("$.data.content[0].email").doesNotExist());
     }
 
     @Test

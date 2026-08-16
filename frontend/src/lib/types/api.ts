@@ -123,4 +123,7 @@ export interface PageParams {
   page?: number;
   size?: number;
   sort?: string;
+  q?: string;
+  country?: string;
+  city?: string;
 }

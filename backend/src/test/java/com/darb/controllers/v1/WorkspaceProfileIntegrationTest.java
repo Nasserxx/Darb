@@ -46,7 +46,8 @@ class WorkspaceProfileIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "Profile Mosque",
-                                  "city": "Riyadh"
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """))
                 .andExpect(status().isCreated());
@@ -90,7 +91,8 @@ class WorkspaceProfileIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "Teacher Mosque",
-                                  "city": "Jeddah"
+                                  "city": "Jeddah",
+                                  "addressState": "Makkah Province"
                                 }
                                 """))
                 .andExpect(status().isCreated())

@@ -18,4 +18,9 @@ public class MosqueSearchResult {
     private UUID id;
     private String name;
     private String city;
+    private String addressCountry;
+    private String addressPostalCode;
+    private String addressStreet;
+    private String addressHouseNumber;
+    private String addressState;
 }

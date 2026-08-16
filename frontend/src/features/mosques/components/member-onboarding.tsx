@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Building2Icon, ClockIcon, SearchIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
+import { AddressText } from "@/components/address-text.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Card,
@@ -14,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
+import { Combobox } from "@/components/ui/combobox.tsx";
 import {
   Field,
   FieldDescription,
@@ -28,15 +30,24 @@ import {
   mosqueJoinSchema,
   type MosqueJoinFormValues,
 } from "@/features/mosques/schemas/mosque-join.schema.ts";
-import type { MosqueSearchResult } from "@/features/mosques/types/onboard.ts";
+import type {
+  MosqueJoinPreviewResponse,
+  MosqueSearchResult,
+} from "@/features/mosques/types/onboard.ts";
 import { studentsApi } from "@/features/students/api/students-api.ts";
 import { teachersApi } from "@/features/teachers/api/teachers-api.ts";
+import { workspaceApi } from "@/features/workspace/api/workspace-api.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
+import { getCountryOptions } from "@/lib/countries.ts";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
-import { consumeJoinIntent } from "@/lib/navigation/post-auth.ts";
+import {
+  consumeJoinIntent,
+  deriveProfileStatus,
+} from "@/lib/navigation/post-auth.ts";
+import type { PageResponse } from "@/lib/types/api.ts";
 
 type MemberOnboardingProps = {
   role: "TEACHER" | "STUDENT";
@@ -53,10 +64,15 @@ export function MemberOnboarding({
   pendingMosqueName,
   onComplete,
 }: MemberOnboardingProps) {
-  const { t } = useTranslation("app");
+  const { t, i18n } = useTranslation("app");
   const { refreshProfile } = useWorkspace();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<MosqueSearchResult[]>([]);
+  const [q, setQ] = useState("");
+  const [country, setCountry] = useState<string | null>(null);
+  const [city, setCity] = useState("");
+  const [page, setPage] = useState(0);
+  const [results, setResults] = useState<PageResponse<MosqueSearchResult> | null>(
+    null,
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -72,14 +88,40 @@ export function MemberOnboarding({
   const inviteCodeValue = joinForm.watch("inviteCode");
   const [debouncedCode, setDebouncedCode] = useState(initialCode?.trim() ?? "");
   const memberRole = role === "TEACHER" ? "teacher" : "student";
+  const countryOptions = useMemo(
+    () => getCountryOptions(i18n.language),
+    [i18n.language],
+  );
 
   useEffect(() => {
     const intent = consumeJoinIntent();
-    if (intent?.code) {
+    if (intent && intent.role === role && intent.code) {
       joinForm.setValue("inviteCode", intent.code);
       setDebouncedCode(intent.code);
     }
-  }, [joinForm]);
+  }, [joinForm, role]);
+
+  useEffect(() => {
+    if (!isPending) return;
+
+    let active = true;
+    const checkApproval = async () => {
+      try {
+        const profile = await workspaceApi.getProfile();
+        if (active && deriveProfileStatus(profile, false) === "assigned") {
+          onComplete();
+        }
+      } catch {
+        // transient errors are ignored; the next poll retries
+      }
+    };
+
+    const interval = window.setInterval(() => void checkApproval(), 10_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [isPending, onComplete]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -88,7 +130,7 @@ export function MemberOnboarding({
     return () => window.clearTimeout(timer);
   }, [inviteCodeValue]);
 
-  const [preview, setPreview] = useState<{ mosqueName: string } | null>(null);
+  const [preview, setPreview] = useState<MosqueJoinPreviewResponse | null>(null);
   const [previewError, setPreviewError] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
 
@@ -146,11 +188,17 @@ export function MemberOnboarding({
     }
   }
 
-  async function handleSearch() {
+  async function handleSearch(nextPage = 0) {
     setIsSearching(true);
+    setPage(nextPage);
     try {
-      const results = await mosquesApi.search(searchQuery.trim());
-      setSearchResults(results);
+      const data = await mosquesApi.search({
+        q: q.trim(),
+        country: country ?? undefined,
+        city: city.trim(),
+        page: nextPage,
+      });
+      setResults(data);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("onboarding.error"));
     } finally {
@@ -184,6 +232,9 @@ export function MemberOnboarding({
       setIsCancelling(false);
     }
   }
+
+  const rows = results?.content ?? [];
+  const hasActiveFilters = Boolean(q.trim() || country || city.trim());
 
   return (
     <Card className="overflow-hidden border-border/80 shadow-sm">
@@ -242,7 +293,12 @@ export function MemberOnboarding({
                   <Alert>
                     <Building2Icon />
                     <AlertTitle>{t("onboarding.mosqueAdmin.joinPreview")}</AlertTitle>
-                    <AlertDescription>{preview.mosqueName}</AlertDescription>
+                    <AlertDescription>
+                      <div className="flex flex-col gap-1">
+                        {preview.mosqueName}
+                        <AddressText mosque={preview} />
+                      </div>
+                    </AlertDescription>
                   </Alert>
                 ) : null
               ) : null}
@@ -257,36 +313,78 @@ export function MemberOnboarding({
           </TabsContent>
 
           <TabsContent value="search" className="flex flex-col gap-6">
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="mosque-search">{t("onboarding.member.searchLabel")}</FieldLabel>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Input
-                    id="mosque-search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={t("onboarding.member.searchPlaceholder")}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={isSearching || !searchQuery.trim()}
-                    onClick={() => void handleSearch()}
-                  >
+            <form
+              className="flex flex-col gap-6"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSearch();
+              }}
+            >
+              <FieldGroup>
+                <div className="flex flex-wrap items-end gap-3">
+                  <Field className="w-64">
+                    <FieldLabel htmlFor="mosque-search">
+                      {t("onboarding.member.searchLabel")}
+                    </FieldLabel>
+                    <Input
+                      id="mosque-search"
+                      value={q}
+                      onChange={(event) => setQ(event.target.value)}
+                      placeholder={t("onboarding.member.searchPlaceholder")}
+                    />
+                  </Field>
+                  <Field className="w-48">
+                    <FieldLabel>{t("mosques.country")}</FieldLabel>
+                    <Combobox
+                      options={countryOptions}
+                      value={country}
+                      onValueChange={setCountry}
+                      placeholder={t("mosques.allCountries")}
+                    />
+                  </Field>
+                  <Field className="w-48">
+                    <FieldLabel htmlFor="mosque-city-search">
+                      {t("mosques.city")}
+                    </FieldLabel>
+                    <Input
+                      id="mosque-city-search"
+                      value={city}
+                      onChange={(event) => setCity(event.target.value)}
+                      placeholder={t("onboarding.member.cityPlaceholder")}
+                    />
+                  </Field>
+                  <Button type="submit" variant="secondary" disabled={isSearching}>
                     <SearchIcon data-icon="inline-start" />
                     {t("onboarding.member.searchButton")}
                   </Button>
+                  {hasActiveFilters ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setQ("");
+                        setCountry(null);
+                        setCity("");
+                        void handleSearch(0);
+                      }}
+                    >
+                      {t("mosques.clearFilters")}
+                    </Button>
+                  ) : null}
                 </div>
-              </Field>
-            </FieldGroup>
+              </FieldGroup>
+            </form>
 
             <div className="flex flex-col gap-3">
-              {searchResults.map((mosque) => (
+              {rows.map((mosque) => (
                 <Card key={mosque.id} className="border-border/70">
                   <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col gap-1">
                       <p className="font-medium">{mosque.name}</p>
-                      <p className="text-sm text-muted-foreground">{mosque.city}</p>
+                      <AddressText
+                        mosque={mosque}
+                        className="text-sm text-muted-foreground"
+                      />
                     </div>
                     <Button
                       size="sm"
@@ -298,10 +396,39 @@ export function MemberOnboarding({
                   </CardContent>
                 </Card>
               ))}
-              {!isSearching && searchResults.length === 0 && searchQuery ? (
+              {!isSearching && results !== null && rows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {t("onboarding.member.noResults")}
                 </p>
+              ) : null}
+              {results && results.totalPages > 1 ? (
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t("table.pageInfo", {
+                      page: page + 1,
+                      total: results.totalPages,
+                      count: results.totalElements,
+                    })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 0}
+                      onClick={() => void handleSearch(page - 1)}
+                    >
+                      {t("table.previous")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={results.last}
+                      onClick={() => void handleSearch(page + 1)}
+                    >
+                      {t("table.next")}
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </div>
           </TabsContent>

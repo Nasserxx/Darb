@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { AddressText } from "@/components/address-text.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
 import {
   Card,
@@ -13,6 +14,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useCircle } from "@/features/circles/hooks/use-circles.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import { useStudentEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts";
+import { useMosque } from "@/features/mosques/hooks/use-mosques.ts";
 import { DEFAULT_LOCALE, translateRole } from "@/i18n/index.ts";
 import {
   Award,
@@ -20,6 +22,7 @@ import {
   CircleDot,
   ClipboardList,
   GraduationCap,
+  Landmark,
   MessageSquare,
   UserCheck,
   Users,
@@ -36,11 +39,14 @@ interface DashboardLink {
 export function DashboardPage() {
   const { t } = useTranslation(["app", "auth"]);
   const { user } = useAuth();
-  const { profile } = useWorkspace();
+  const { profile, needsOnboarding } = useWorkspace();
   const { locale } = useParams<{ locale: string }>();
   const localePrefix = locale ?? DEFAULT_LOCALE;
 
   const role = (user?.role ?? "").toUpperCase().replace(/-/g, "_");
+  const { data: mosque } = useMosque(profile?.mosqueId ?? "", {
+    enabled: Boolean(profile?.mosqueId),
+  });
 
   let links: DashboardLink[];
 
@@ -237,6 +243,25 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         )}
+        {(role === "TEACHER" || role === "STUDENT" || role === "PARENT") &&
+          !needsOnboarding &&
+          profile?.mosqueId && (
+            <Card className="h-full border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Landmark className="text-primary" />
+                  {t("dashboard.myMosque")}
+                </CardTitle>
+                <CardDescription>
+                  {t("dashboard.myMosqueDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="font-medium">{profile.mosqueName}</p>
+                {mosque ? <AddressText mosque={mosque} /> : null}
+              </CardContent>
+            </Card>
+          )}
       </div>
     </div>
   );

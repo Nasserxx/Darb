@@ -14,6 +14,11 @@ export interface MosqueSearchResult {
   id: string;
   name: string;
   city: string;
+  addressCountry?: string;
+  addressPostalCode?: string;
+  addressStreet?: string;
+  addressHouseNumber?: string;
+  addressState?: string;
 }
 
 export interface MemberJoinRequestResponse {
@@ -36,6 +41,11 @@ export interface MosqueInviteCodesResponse {
 
 export interface MosqueJoinPreviewResponse {
   mosqueName: string;
+  addressCountry?: string;
+  addressPostalCode?: string;
+  addressStreet?: string;
+  addressHouseNumber?: string;
+  addressState?: string;
 }
 
 export interface MosqueJoinRequest {

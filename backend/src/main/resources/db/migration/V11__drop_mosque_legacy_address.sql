@@ -1,0 +1,1 @@
+ALTER TABLE mosques DROP COLUMN IF EXISTS address;
