@@ -32,6 +32,7 @@ export async function createMosqueAdminWithMosque(): Promise<MosqueAdminFixture>
   const { mosqueId } = await onboardMosque(session.accessToken, {
     name: `E2E Mosque ${Date.now()}`,
     city: "Riyadh",
+    addressState: "Riyadh Province",
   });
 
   return {

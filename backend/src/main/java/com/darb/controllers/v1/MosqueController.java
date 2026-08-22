@@ -13,6 +13,7 @@ import com.darb.dtos.mosque.MosqueUpdateRequest;
 import com.darb.dtos.mosque.MemberJoinRequestCreateRequest;
 import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.entities.enums.UserRole;
+import com.darb.security.MosqueAccessService;
 import com.darb.services.MosqueMemberJoinRequestService;
 import com.darb.services.MosqueService;
 
@@ -30,7 +31,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -41,6 +41,7 @@ public class MosqueController {
 
     private final MosqueService mosqueService;
     private final MosqueMemberJoinRequestService joinRequestService;
+    private final MosqueAccessService mosqueAccessService;
 
     @GetMapping
     @Operation(
@@ -54,8 +55,13 @@ public class MosqueController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<MosqueResponse>>> findAll(
+            Authentication authentication,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "country", required = false) String country,
+            @RequestParam(value = "city", required = false) String city,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<MosqueResponse> page = mosqueService.findAll(pageable);
+        UUID userId = (UUID) authentication.getPrincipal();
+        Page<MosqueResponse> page = mosqueService.findAll(userId, q, country, city, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<MosqueResponse>>builder()
                 .success(true)
                 .message("Mosques retrieved successfully")
@@ -84,15 +90,25 @@ public class MosqueController {
 
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('TEACHER', 'STUDENT')")
-    public ResponseEntity<ApiResponse<List<MosqueSearchResult>>> search(
+    public ResponseEntity<ApiResponse<PageResponse<MosqueSearchResult>>> search(
             Authentication authentication,
             @RequestParam(value = "q", required = false) String q,
-            @RequestParam(value = "city", required = false) String city) {
+            @RequestParam(value = "country", required = false) String country,
+            @RequestParam(value = "city", required = false) String city,
+            @PageableDefault(size = 20) Pageable pageable) {
         UUID userId = (UUID) authentication.getPrincipal();
-        return ResponseEntity.ok(ApiResponse.<List<MosqueSearchResult>>builder()
+        Page<MosqueSearchResult> page = mosqueService.searchMosques(userId, q, country, city, pageable);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<MosqueSearchResult>>builder()
                 .success(true)
                 .message("Mosques retrieved successfully")
-                .data(mosqueService.searchMosques(userId, q, city))
+                .data(PageResponse.<MosqueSearchResult>builder()
+                        .content(page.getContent())
+                        .pageNumber(page.getNumber())
+                        .pageSize(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .last(page.isLast())
+                        .build())
                 .build());
     }
 
@@ -104,7 +120,7 @@ public class MosqueController {
         return ResponseEntity.ok(ApiResponse.<MosqueInviteCodesResponse>builder()
                 .success(true)
                 .message("Invite codes retrieved successfully")
-                .data(mosqueService.getInviteCodes(userId))
+                .data(mosqueService.getInviteCodes(userId, mosqueAccessService.requireMosqueIdForAdmin(userId)))
                 .build());
     }
 
@@ -296,6 +312,73 @@ public class MosqueController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Mosque deactivated successfully")
+                .build());
+    }
+
+    @PostMapping("/{id}/reactivate")
+    @Operation(
+            summary = "Reactivate a mosque",
+            description = "Reactivates a previously deactivated mosque. Only accessible by SUPER_ADMIN."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Mosque reactivated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Mosque not found")
+    })
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> reactivate(
+            @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID id) {
+        mosqueService.reactivate(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Mosque reactivated successfully")
+                .build());
+    }
+
+    @GetMapping("/{id}/invite-codes")
+    @Operation(
+            summary = "Get mosque invite codes",
+            description = "Returns the invite codes for a specific mosque. Accessible by SUPER_ADMIN or a mosque admin of that mosque."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invite codes retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Mosque not found")
+    })
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<MosqueInviteCodesResponse>> getInviteCodes(
+            Authentication authentication,
+            @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID id) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MosqueInviteCodesResponse>builder()
+                .success(true)
+                .message("Invite codes retrieved successfully")
+                .data(mosqueService.getInviteCodes(userId, id))
+                .build());
+    }
+
+    @PostMapping("/{id}/invite-codes/rotate")
+    @Operation(
+            summary = "Rotate mosque invite codes",
+            description = "Regenerates the invite codes for a specific mosque. Accessible by SUPER_ADMIN or a mosque admin of that mosque."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invite codes rotated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Mosque not found")
+    })
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<MosqueInviteCodesResponse>> rotateInviteCodes(
+            Authentication authentication,
+            @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID id) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MosqueInviteCodesResponse>builder()
+                .success(true)
+                .message("Invite codes rotated successfully")
+                .data(mosqueService.rotateInviteCodes(userId, id))
                 .build());
     }
 }

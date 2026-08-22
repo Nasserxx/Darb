@@ -43,6 +43,11 @@ export const studentsApi = {
       body: JSON.stringify(body),
     }),
 
+  regenerateParentInviteCode: (id: string) =>
+    mutateData<StudentResponse>(`${BASE_PATH}/${id}/parent-invite-code`, {
+      method: "POST",
+    }),
+
   delete: async (id: string): Promise<void> => {
     await apiFetch<ApiResponse<void>>(`${BASE_PATH}/${id}`, {
       method: "DELETE",

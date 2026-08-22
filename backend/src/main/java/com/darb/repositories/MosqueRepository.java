@@ -1,5 +1,7 @@
 package com.darb.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -7,13 +9,12 @@ import org.springframework.data.repository.query.Param;
 
 import com.darb.entities.Mosque;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface MosqueRepository extends JpaRepository<Mosque, UUID>, JpaSpecificationExecutor<Mosque> {
-    List<Mosque> findByIsActiveTrue();
-    List<Mosque> findByCity(String city);
+    Page<Mosque> findByIsActiveTrueAndIdIn(Collection<UUID> ids, Pageable pageable);
 
     @Query(
             value = """
@@ -44,16 +45,4 @@ public interface MosqueRepository extends JpaRepository<Mosque, UUID>, JpaSpecif
                     """,
             nativeQuery = true)
     Optional<Mosque> findActiveByStudentInviteCode(@Param("inviteCode") String inviteCode);
-
-    @Query(
-            value = """
-                    SELECT * FROM mosques
-                    WHERE is_active = true
-                      AND (:q IS NULL OR :q = '' OR lower(name) LIKE lower(concat('%', :q, '%')))
-                      AND (:city IS NULL OR :city = '' OR lower(city) = lower(:city))
-                    ORDER BY name
-                    LIMIT 20
-                    """,
-            nativeQuery = true)
-    List<Mosque> searchActive(@Param("q") String q, @Param("city") String city);
 }

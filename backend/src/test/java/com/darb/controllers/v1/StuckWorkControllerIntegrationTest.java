@@ -136,7 +136,8 @@ class StuckWorkControllerIntegrationTest extends PostgresIntegrationTestBase {
                         .content("""
                                 {
                                   "name": "%s",
-                                  "city": "Riyadh"
+                                  "city": "Riyadh",
+                                  "addressState": "Riyadh Province"
                                 }
                                 """.formatted(mosqueName)))
                 .andExpect(status().isCreated())

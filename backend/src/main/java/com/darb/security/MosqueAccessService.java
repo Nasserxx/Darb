@@ -70,6 +70,17 @@ public class MosqueAccessService {
         return mosqueId;
     }
 
+    public void requireMosqueAdminWith(UUID callerId, UUID mosqueId) {
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            return;
+        }
+        if (role == UserRole.MOSQUE_ADMIN && mosqueAdminRepository.existsByUserIdAndMosqueId(callerId, mosqueId)) {
+            return;
+        }
+        throw new ForbiddenException("Access denied to this mosque");
+    }
+
     public void assertCanAccessStudent(UUID callerId, UUID studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));

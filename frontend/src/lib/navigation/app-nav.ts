@@ -39,7 +39,7 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.mosques",
     href: "/mosques",
     icon: Landmark,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"],
+    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN"],
   },
   {
     id: "mosque-admins",
@@ -144,6 +144,14 @@ export const APP_NAV_ITEMS: NavItem[] = [
 export function getNavItemsForRole(role: string): NavItem[] {
   const normalized = role.toUpperCase().replace(/-/g, "_") as UserRole;
   return APP_NAV_ITEMS.filter((item) => item.roles.includes(normalized));
+}
+
+export function mosqueNavMeta(role: string): { labelKey: string; icon: LucideIcon } {
+  const normalized = role.toUpperCase().replace(/-/g, "_");
+  if (normalized === "MOSQUE_ADMIN") {
+    return { labelKey: "nav.mosqueSettings", icon: Settings };
+  }
+  return { labelKey: "nav.mosques", icon: Landmark };
 }
 
 export function getDefaultLandingPath(role: string): string {

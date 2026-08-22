@@ -102,7 +102,7 @@ export async function loginUser(
 
 export async function onboardMosque(
   token: string,
-  body: { name: string; city?: string; timezone?: string },
+  body: { name: string; city: string; addressState: string; timezone?: string },
 ): Promise<{
   mosqueId: string;
   inviteCode?: string;
@@ -198,7 +198,11 @@ export async function seedMosqueWithInviteCode(options?: {
     fullName: "E2E Founder",
   });
   const session = await loginUser(founderEmail);
-  const onboarded = await onboardMosque(session.accessToken, { name: mosqueName, city });
+  const onboarded = await onboardMosque(session.accessToken, {
+    name: mosqueName,
+    city,
+    addressState: "Riyadh Province",
+  });
 
   if (!onboarded.inviteCode) {
     throw new Error("Expected invite code after mosque onboarding");

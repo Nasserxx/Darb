@@ -12,10 +12,13 @@ export function usePagination(defaultSize = DEFAULT_SIZE) {
   const page = Number(searchParams.get("page") ?? DEFAULT_PAGE);
   const size = Number(searchParams.get("size") ?? defaultSize);
   const sort = searchParams.get("sort") ?? undefined;
+  const q = searchParams.get("q") || undefined;
+  const country = searchParams.get("country") || undefined;
+  const city = searchParams.get("city") || undefined;
 
   const params: PageParams = useMemo(
-    () => ({ page, size, sort }),
-    [page, size, sort],
+    () => ({ page, size, sort, q, country, city }),
+    [page, size, sort, q, country, city],
   );
 
   const setPage = useCallback(
@@ -57,5 +60,38 @@ export function usePagination(defaultSize = DEFAULT_SIZE) {
     [setSearchParams],
   );
 
-  return { page, size, sort, params, setPage, setSize, setSort };
+  const setFilter = useCallback(
+    (partial: Partial<Pick<PageParams, "q" | "country" | "city">>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, value] of Object.entries(partial)) {
+            if (value === undefined || value === "") {
+              next.delete(key);
+            } else {
+              next.set(key, value);
+            }
+          }
+          next.set("page", "0");
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  return {
+    page,
+    size,
+    sort,
+    q,
+    country,
+    city,
+    params,
+    setPage,
+    setSize,
+    setSort,
+    setFilter,
+  };
 }

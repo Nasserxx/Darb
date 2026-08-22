@@ -22,11 +22,23 @@ public class MosqueResponse {
     @Schema(description = "Mosque name", example = "Al-Noor Mosque")
     private String name;
 
-    @Schema(description = "Full address")
-    private String address;
-
     @Schema(description = "City")
     private String city;
+
+    @Schema(description = "Country (ISO 3166-1 alpha-2)")
+    private String addressCountry;
+
+    @Schema(description = "Postal / ZIP code")
+    private String addressPostalCode;
+
+    @Schema(description = "Street name")
+    private String addressStreet;
+
+    @Schema(description = "House number")
+    private String addressHouseNumber;
+
+    @Schema(description = "State / region")
+    private String addressState;
 
     @Schema(description = "Contact phone")
     private String phone;

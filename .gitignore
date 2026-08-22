@@ -49,3 +49,4 @@ graphify-out/
 node_modules
 .superpowers
 superpowers
+.opencode

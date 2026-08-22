@@ -17,6 +17,8 @@ import java.time.Instant;
 
 import com.darb.entities.enums.NotificationChannel;
 import com.darb.entities.enums.NotificationStatus;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "notifications")
@@ -59,6 +61,7 @@ public class Notification extends BaseAuditableEntity {
     @Column(name = "delivered_at")
     private Instant deliveredAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
 }

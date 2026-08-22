@@ -57,3 +57,15 @@ export function useDeleteStudent() {
     },
   });
 }
+
+export function useRegenerateParentInviteCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => studentsApi.regenerateParentInviteCode(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: studentKeys.detail(id) });
+    },
+  });
+}

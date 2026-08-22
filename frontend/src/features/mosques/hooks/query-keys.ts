@@ -6,5 +6,6 @@ export const mosqueKeys = {
   list: (params: PageParams = {}) => [...mosqueKeys.lists(), params] as const,
   details: () => [...mosqueKeys.all, "detail"] as const,
   detail: (id: string) => [...mosqueKeys.details(), id] as const,
+  inviteCodes: (id: string) => [...mosqueKeys.all, "invite-codes", id] as const,
   joinPreview: (code: string) => [...mosqueKeys.all, "join-preview", code] as const,
 };

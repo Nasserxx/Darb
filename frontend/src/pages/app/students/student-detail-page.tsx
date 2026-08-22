@@ -8,17 +8,28 @@ import { PageHeader } from "@/components/shared/page-header.tsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { StudentDetailCard } from "@/features/students/components/student-detail-card.tsx";
 import { StudentFormDialog } from "@/features/students/components/student-form-dialog.tsx";
 import {
   useDeleteStudent,
+  useRegenerateParentInviteCode,
   useStudent,
 } from "@/features/students/hooks/use-students.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 import { canManageStudents } from "@/lib/navigation/role-permissions.ts";
-import { Award, BookOpen, ChevronLeftIcon, CircleDot, MessageSquare } from "lucide-react";
+import {
+  Award,
+  BookOpen,
+  ChevronLeftIcon,
+  CircleDot,
+  Copy,
+  KeyRound,
+  MessageSquare,
+  RefreshCw,
+} from "lucide-react";
 
 export function StudentDetailPage() {
   const { t } = useTranslation("app");
@@ -29,8 +40,11 @@ export function StudentDetailPage() {
   const canWrite = canManageStudents(user?.role);
   const { data: student, isLoading, isError } = useStudent(id ?? "");
   const deleteMutation = useDeleteStudent();
+  const regenerateMutation = useRegenerateParentInviteCode();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [parentInviteCode, setParentInviteCode] = useState<string | null>(null);
+  const displayParentInviteCode = parentInviteCode ?? student?.parentInviteCode ?? null;
 
   async function handleDelete() {
     if (!student) return;
@@ -38,6 +52,27 @@ export function StudentDetailPage() {
       await deleteMutation.mutateAsync(student.id);
       toast.success(t("students.deleteSuccess"));
       navigate(`/${localePrefix}/students`, { replace: true });
+    } catch (error) {
+      toast.error(toMutationError(error, t).message);
+    }
+  }
+
+  async function handleCopyParentInviteCode() {
+    if (!displayParentInviteCode) return;
+    try {
+      await navigator.clipboard.writeText(displayParentInviteCode);
+      toast.success(t("students.inviteCodeCopied"));
+    } catch {
+      toast.error(t("onboarding.error"));
+    }
+  }
+
+  async function handleRegenerateParentInviteCode() {
+    if (!student) return;
+    try {
+      const updated = await regenerateMutation.mutateAsync(student.id);
+      setParentInviteCode(updated.parentInviteCode ?? null);
+      toast.success(t("students.regenerateSuccess"));
     } catch (error) {
       toast.error(toMutationError(error, t).message);
     }
@@ -91,6 +126,44 @@ export function StudentDetailPage() {
         </Link>
       </Button>
       <StudentDetailCard student={student} />
+
+      {canWrite && displayParentInviteCode ? (
+        <Card className="border-border/70">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <KeyRound className="text-primary" />
+              {t("students.parentInviteCode")}
+            </CardTitle>
+            <CardDescription>{t("students.parentInviteHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-mono text-sm">{displayParentInviteCode}</p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleCopyParentInviteCode()}
+              >
+                <Copy data-icon="inline-start" />
+                {t("students.copyInviteCode")}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={regenerateMutation.isPending}
+                onClick={() => void handleRegenerateParentInviteCode()}
+              >
+                {regenerateMutation.isPending ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <RefreshCw data-icon="inline-start" />
+                )}
+                {t("students.regenerateInviteCode")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="flex flex-col gap-4">
         <h3 className="font-serif text-lg font-semibold">{t("studentRecord.title")}</h3>

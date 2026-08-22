@@ -12,6 +12,15 @@ export function buildPageUrl(path: string, params: PageParams = {}): string {
   if (params.sort) {
     search.set("sort", params.sort);
   }
+  if (params.q) {
+    search.set("q", params.q);
+  }
+  if (params.country) {
+    search.set("country", params.country);
+  }
+  if (params.city) {
+    search.set("city", params.city);
+  }
   const query = search.toString();
   return query ? `${path}?${query}` : path;
 }

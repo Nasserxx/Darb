@@ -2,10 +2,13 @@ package com.darb.services;
 
 import com.darb.dtos.mosque.MemberJoinRequestCreateRequest;
 import com.darb.dtos.mosque.MemberJoinRequestResponse;
+import com.darb.dtos.notification.NotificationCreateRequest;
 import com.darb.entities.Mosque;
 import com.darb.entities.MosqueMemberJoinRequest;
 import com.darb.entities.User;
 import com.darb.entities.enums.JoinRequestStatus;
+import com.darb.entities.enums.NotificationChannel;
+import com.darb.entities.enums.NotificationStatus;
 import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ForbiddenException;
@@ -36,6 +39,7 @@ public class MosqueMemberJoinRequestService {
     private final TeacherService teacherService;
     private final StudentService studentService;
     private final MosqueAccessService mosqueAccessService;
+    private final NotificationService notificationService;
 
     @Transactional
     public MemberJoinRequestResponse create(UUID userId, MemberJoinRequestCreateRequest request) {
@@ -93,7 +97,10 @@ public class MosqueMemberJoinRequestService {
         joinRequest.setStatus(JoinRequestStatus.APPROVED);
         joinRequest.setReviewedAt(Instant.now());
         joinRequest.setReviewedBy(findUserOrThrow(adminUserId));
-        return toResponse(joinRequestRepository.save(joinRequest));
+        joinRequestRepository.save(joinRequest);
+        sendDecisionNotification(adminUserId, joinRequest, "Join request approved",
+                "Your request to join " + joinRequest.getMosque().getName() + " was approved.");
+        return toResponse(joinRequest);
     }
 
     @Transactional
@@ -108,7 +115,10 @@ public class MosqueMemberJoinRequestService {
         joinRequest.setStatus(JoinRequestStatus.REJECTED);
         joinRequest.setReviewedAt(Instant.now());
         joinRequest.setReviewedBy(findUserOrThrow(adminUserId));
-        return toResponse(joinRequestRepository.save(joinRequest));
+        joinRequestRepository.save(joinRequest);
+        sendDecisionNotification(adminUserId, joinRequest, "Join request rejected",
+                "Your request to join " + joinRequest.getMosque().getName() + " was rejected.");
+        return toResponse(joinRequest);
     }
 
     @Transactional
@@ -119,6 +129,18 @@ public class MosqueMemberJoinRequestService {
 
         joinRequest.setStatus(JoinRequestStatus.CANCELLED);
         joinRequestRepository.save(joinRequest);
+    }
+
+    private void sendDecisionNotification(UUID adminUserId, MosqueMemberJoinRequest joinRequest, String title, String body) {
+        NotificationCreateRequest request = new NotificationCreateRequest();
+        request.setMosqueId(joinRequest.getMosque().getId());
+        request.setRecipientUserId(joinRequest.getUser().getId());
+        request.setSenderUserId(adminUserId);
+        request.setTitle(title);
+        request.setBody(body);
+        request.setChannel(NotificationChannel.IN_APP);
+        request.setStatus(NotificationStatus.PENDING);
+        notificationService.create(request);
     }
 
     private void assertEligibleForJoinRequest(User user) {
