@@ -12,6 +12,7 @@
     "or": "oder",
     "required": "Pflichtfeld",
     "optional": "Optional",
+    "toggleSidebar": "Seitenleiste umschalten",
     "showPassword": "Passwort anzeigen",
     "hidePassword": "Passwort ausblenden",
     "language": "Sprache",
@@ -32,7 +33,7 @@
       "title": "Anmelden",
       "subtitle": "E-Mail und Passwort eingeben, um auf Ihr Konto zuzugreifen.",
       "email": "E-Mail",
-      "emailPlaceholder": "you@example.com",
+      "emailPlaceholder": "name@beispiel.de",
       "password": "Passwort",
       "passwordPlaceholder": "Passwort eingeben",
       "submit": "Anmelden",
@@ -47,7 +48,7 @@
       "fullName": "Vollständiger Name",
       "fullNamePlaceholder": "Ihr vollständiger Name",
       "email": "E-Mail",
-      "emailPlaceholder": "you@example.com",
+      "emailPlaceholder": "name@beispiel.de",
       "phone": "Telefon",
       "phonePlaceholder": "+966501234567",
       "password": "Passwort",
@@ -87,7 +88,8 @@
       "student": "Schüler",
       "teacher": "Lehrer",
       "parent": "Elternteil",
-      "mosque_admin": "Moschee-Administrator"
+      "mosque_admin": "Moschee-Administrator",
+      "super_admin": "Superadministrator"
     },
     "genders": {
       "male": "Männlich",

@@ -69,7 +69,9 @@ export function ParentChildrenView() {
                   </CardDescription>
                 </div>
                 <Badge variant="outline">
-                  {t(`enums.enrollmentStatus.${child.status}`)}
+                  {child.status === "WITHDRAWN"
+                    ? t("membership.formerMember")
+                    : t(`enums.enrollmentStatus.${child.status}`)}
                 </Badge>
               </div>
             </CardHeader>

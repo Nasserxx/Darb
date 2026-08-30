@@ -160,6 +160,7 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> create(
             Authentication authentication,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody AttendanceCreateRequest request) {
         UUID callerId = (UUID) authentication.getPrincipal();
         request.setRecordedBy(callerId);
@@ -167,7 +168,8 @@ public class AttendanceController {
                 .body(ApiResponse.<AttendanceResponse>builder()
                         .success(true)
                         .message("Attendance recorded successfully")
-                        .data(attendanceService.create(callerId, request))
+                        .data(attendanceService.create(
+                                callerId, request, auditReasonHeader, request.getAuditReason()))
                         .build());
     }
 

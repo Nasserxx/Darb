@@ -1,6 +1,8 @@
 package com.darb.entities;
 
+import com.darb.entities.enums.JoinRequestDirection;
 import com.darb.entities.enums.JoinRequestStatus;
+import com.darb.entities.enums.ParentRelationship;
 import com.darb.entities.enums.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +44,18 @@ public class MosqueMemberJoinRequest extends BaseAuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private JoinRequestStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private JoinRequestDirection direction;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "linked_student_id")
+    private Student linkedStudent;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private ParentRelationship relationship;
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;

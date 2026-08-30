@@ -12,6 +12,8 @@ export interface MosqueAdminResponse {
   isPrimaryAdmin: boolean;
   assignedAt: Instant;
   assignedBy: Uuid | null;
+  isActive: boolean;
+  leftAt: Instant | null;
 }
 
 export interface MosqueAdminCreateRequest {

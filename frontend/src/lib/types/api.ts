@@ -28,6 +28,21 @@ export type UserRole =
 
 export type Gender = "MALE" | "FEMALE";
 
+export type ParentRelationship =
+  | "FATHER"
+  | "MOTHER"
+  | "STEPFATHER"
+  | "STEPMOTHER"
+  | "GRANDFATHER"
+  | "GRANDMOTHER"
+  | "UNCLE"
+  | "AUNT"
+  | "BROTHER"
+  | "SISTER"
+  | "GUARDIAN"
+  | "PARENT"
+  | "OTHER";
+
 export type EnrollmentStatus =
   | "PENDING"
   | "ACTIVE"
@@ -126,4 +141,6 @@ export interface PageParams {
   q?: string;
   country?: string;
   city?: string;
+  mosqueId?: string;
+  status?: string;
 }

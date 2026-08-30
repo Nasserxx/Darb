@@ -1,0 +1,27 @@
+---
+description: Session and durable memory via local-memory-mcp (project Darb)
+alwaysApply: true
+---
+
+# Local Memory MCP
+
+When memory MCP tools are available (server `memory` / local-memory-mcp), use them for session continuity. Skip quietly if tools are unavailable.
+
+## Session lifecycle
+
+1. **Start** — Early in the conversation (before reinventing prior work), call `memory_session_start` with project `"Darb"`.
+2. **End** — When wrapping up substantive work, call `memory_session_end` with a short summary of what was done and decided.
+
+## Recall before reinventing
+
+Before re-deciding architecture, conventions, or known fixes, call `memory_recall` or `memory_search` for relevant prior context.
+
+## Learn durable insights
+
+Use `memory_learn` for patterns, mistakes, and insights worth keeping across sessions (e.g. “PowerShell 5.x rejects `&&`”, preferred test command). Never store tokens, passwords, API keys, `.env` values, or connection strings in memory.
+
+## Keep it light
+
+- One start / one end per substantive session is enough.
+- Summaries: a few sentences, not a transcript.
+- Prefer learn for durable facts; session end for this-turn wrap-up.

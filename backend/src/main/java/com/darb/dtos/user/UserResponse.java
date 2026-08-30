@@ -52,4 +52,22 @@ public class UserResponse {
 
     @Schema(description = "Account creation timestamp")
     private Instant createdAt;
+
+    @Schema(description = "City", example = "Riyadh")
+    private String city;
+
+    @Schema(description = "Country (ISO 3166-1 alpha-2)", example = "SA")
+    private String addressCountry;
+
+    @Schema(description = "Postal / ZIP code", example = "12211")
+    private String addressPostalCode;
+
+    @Schema(description = "Street name", example = "King Fahd Road")
+    private String addressStreet;
+
+    @Schema(description = "House number", example = "123")
+    private String addressHouseNumber;
+
+    @Schema(description = "State / region", example = "Riyadh Province")
+    private String addressState;
 }

@@ -57,4 +57,22 @@ public class User extends BaseAuditableEntity {
 
     @Column(name = "last_login")
     private Instant lastLogin;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(name = "address_country", length = 100)
+    private String addressCountry;
+
+    @Column(name = "address_postal_code", length = 20)
+    private String addressPostalCode;
+
+    @Column(name = "address_street", length = 200)
+    private String addressStreet;
+
+    @Column(name = "address_house_number", length = 20)
+    private String addressHouseNumber;
+
+    @Column(name = "address_state", length = 100)
+    private String addressState;
 }

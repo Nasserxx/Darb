@@ -16,6 +16,7 @@ import { useWorkspace } from "@/features/workspace/context/workspace-provider.ts
 import { useStudentEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts";
 import { useMosque } from "@/features/mosques/hooks/use-mosques.ts";
 import { DEFAULT_LOCALE, translateRole } from "@/i18n/index.ts";
+import { MESSAGES_UI_ENABLED } from "@/lib/navigation/app-nav.ts";
 import {
   Award,
   BookOpen,
@@ -48,6 +49,16 @@ export function DashboardPage() {
     enabled: Boolean(profile?.mosqueId),
   });
 
+  const { data: enrollmentsPage } = useStudentEnrollments(profile?.studentId);
+  const activeEnrollment = enrollmentsPage?.content?.find(
+    (e) => e.status === "ACTIVE",
+  );
+  const activeCircleId = activeEnrollment?.circleId;
+  const { data: circle } = useCircle(activeCircleId ?? "", {
+    enabled: !!activeCircleId,
+  });
+  const teacherName = circle?.teacherName;
+
   let links: DashboardLink[];
 
   if (role === "TEACHER") {
@@ -76,17 +87,24 @@ export function DashboardPage() {
         title: t("nav.attendance"),
         description: t("attendance.description"),
       },
-      {
-        to: `/${localePrefix}/messages`,
-        icon: MessageSquare,
-        title: t("nav.messages"),
-        description: t("messages.description"),
-      },
+      ...(MESSAGES_UI_ENABLED
+        ? [
+            {
+              to: `/${localePrefix}/messages`,
+              icon: MessageSquare,
+              title: t("nav.messages"),
+              description: t("messages.description"),
+            },
+          ]
+        : []),
     ];
   } else if (role === "STUDENT") {
     const studentId = profile?.studentId;
+    const circleQuery = activeCircleId
+      ? `?circleId=${encodeURIComponent(activeCircleId)}`
+      : "";
     const memorizationTarget = studentId
-      ? `/${localePrefix}/memorization/student/${studentId}`
+      ? `/${localePrefix}/memorization/student/${studentId}${circleQuery}`
       : `/${localePrefix}/circles`;
     const goalsTarget = studentId
       ? `/${localePrefix}/goals/student/${studentId}`
@@ -114,17 +132,21 @@ export function DashboardPage() {
         title: t("nav.achievements"),
         description: t("achievements.description"),
       },
-      {
-        to: `/${localePrefix}/messages`,
-        icon: MessageSquare,
-        title: t("nav.messages"),
-        description: t("messages.description"),
-      },
+      ...(MESSAGES_UI_ENABLED
+        ? [
+            {
+              to: `/${localePrefix}/messages`,
+              icon: MessageSquare,
+              title: t("nav.messages"),
+              description: t("messages.description"),
+            },
+          ]
+        : []),
       {
         to: attendanceTarget,
         icon: UserCheck,
         title: t("nav.attendance"),
-        description: t("attendance.description"),
+        description: t("attendance.studentDescription"),
       },
     ];
   } else if (role === "PARENT") {
@@ -153,12 +175,16 @@ export function DashboardPage() {
         title: t("nav.achievements"),
         description: t("achievements.description"),
       },
-      {
-        to: `/${localePrefix}/messages`,
-        icon: MessageSquare,
-        title: t("nav.messages"),
-        description: t("messages.description"),
-      },
+      ...(MESSAGES_UI_ENABLED
+        ? [
+            {
+              to: `/${localePrefix}/messages`,
+              icon: MessageSquare,
+              title: t("nav.messages"),
+              description: t("messages.description"),
+            },
+          ]
+        : []),
     ];
   } else {
     // SUPER_ADMIN / MOSQUE_ADMIN
@@ -181,23 +207,18 @@ export function DashboardPage() {
         title: t("nav.attendance"),
         description: t("attendance.description"),
       },
-      {
-        to: `/${localePrefix}/messages`,
-        icon: MessageSquare,
-        title: t("nav.messages"),
-        description: t("messages.description"),
-      },
+      ...(MESSAGES_UI_ENABLED
+        ? [
+            {
+              to: `/${localePrefix}/messages`,
+              icon: MessageSquare,
+              title: t("nav.messages"),
+              description: t("messages.description"),
+            },
+          ]
+        : []),
     ];
   }
-
-  const { data: enrollmentsPage } = useStudentEnrollments(profile?.studentId);
-  const activeEnrollment = enrollmentsPage?.content?.find(
-    (e) => e.status === "ACTIVE",
-  );
-  const { data: circle } = useCircle(activeEnrollment?.circleId ?? "", {
-    enabled: !!activeEnrollment?.circleId,
-  });
-  const teacherName = circle?.teacherName;
 
   return (
     <div className="auth-stagger flex flex-col gap-6">

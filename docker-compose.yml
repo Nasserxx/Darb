@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-darb}
       POSTGRES_USER: ${DB_USER:-darb}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-darb}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-  }
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:

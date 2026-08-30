@@ -1,8 +1,8 @@
 package com.darb.dtos.parentstudent;
 
+import com.darb.entities.enums.ParentRelationship;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.UUID;
@@ -19,9 +19,8 @@ public class ParentStudentCreateRequest {
     @Schema(description = "Student ID to link", example = "b2c3d4e5-f6a7-8901-bcde-f12345678901")
     private UUID studentId;
 
-    @Size(max = 50)
-    @Schema(description = "Relationship to the student", example = "Father")
-    private String relationship;
+    @Schema(description = "Relationship to the student", example = "FATHER")
+    private ParentRelationship relationship;
 
     @Schema(description = "Whether this is the primary parent/guardian", example = "true")
     private Boolean isPrimary;

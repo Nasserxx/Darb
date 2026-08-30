@@ -41,17 +41,22 @@ public class GoalService {
     @Transactional(readOnly = true)
     public GoalResponse findById(UUID callerId, UUID id) {
         Goal goal = findEntityOrThrow(id);
-        mosqueAccessService.assertCanAccessStudent(callerId, goal.getStudent().getId());
+        UUID authorId = goal.getSetBy().getId();
+        if (!authorId.equals(callerId)) {
+            mosqueAccessService.assertCanAccessStudent(callerId, goal.getStudent().getId());
+        }
         return toResponse(goal);
     }
 
     @Transactional(readOnly = true)
-    public Page<GoalResponse> findByStudentId(UUID studentId, Pageable pageable) {
+    public Page<GoalResponse> findByStudentId(UUID callerId, UUID studentId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
         return goalRepository.findByStudentId(studentId, pageable).map(this::toResponse);
     }
 
     @Transactional
-    public GoalResponse create(GoalCreateRequest request) {
+    public GoalResponse create(UUID callerId, GoalCreateRequest request) {
+        mosqueAccessService.assertCanMutateStudent(callerId, request.getStudentId());
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
         Circle circle = circleRepository.findById(request.getCircleId())
@@ -74,8 +79,9 @@ public class GoalService {
     }
 
     @Transactional
-    public GoalResponse update(UUID id, GoalUpdateRequest request) {
+    public GoalResponse update(UUID callerId, UUID id, GoalUpdateRequest request) {
         Goal goal = findEntityOrThrow(id);
+        mosqueAccessService.assertCanMutateStudent(callerId, goal.getStudent().getId());
 
         if (request.getTitle() != null) {
             goal.setTitle(request.getTitle());
@@ -100,7 +106,9 @@ public class GoalService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
+        Goal goal = findEntityOrThrow(id);
+        mosqueAccessService.assertCanMutateStudent(callerId, goal.getStudent().getId());
         goalRepository.deleteById(id);
     }
 

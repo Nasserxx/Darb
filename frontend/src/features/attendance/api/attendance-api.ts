@@ -1,3 +1,4 @@
+import { withAuditReason } from "@/lib/api/audit-reason.ts";
 import { fetchData, fetchPage, mutateData } from "@/lib/api/pagination.ts";
 import type { PageParams } from "@/lib/types/api.ts";
 
@@ -26,17 +27,23 @@ export const attendanceApi = {
     return fetchPage<AttendanceResponse>(`${BASE}/student/${studentId}`, params);
   },
 
-  create(body: AttendanceCreateRequest) {
+  create(body: AttendanceCreateRequest, auditReason?: string) {
     return mutateData<AttendanceResponse>(BASE, {
       method: "POST",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     });
   },
 
-  update(id: string, body: AttendanceUpdateRequest) {
+  update(id: string, body: AttendanceUpdateRequest, auditReason?: string) {
     return mutateData<AttendanceResponse>(`${BASE}/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     });
   },
 

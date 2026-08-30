@@ -4,7 +4,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import { resolvePostAuthPath } from "@/lib/navigation/post-auth.ts";
-import { DEFAULT_LOCALE } from "@/i18n/index.ts";
+import { preferredLocale } from "@/i18n/index.ts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppLayout } from "./app-layout.tsx";
 import { ProtectedRoute } from "./protected-route.tsx";
@@ -129,6 +129,16 @@ export const StudentMemorizationPage = lazy(() =>
     default: m.StudentMemorizationPage,
   })),
 );
+export const JuzMemorizationPage = lazy(() =>
+  import("../pages/app/memorization/juz-memorization-page.tsx").then((m) => ({
+    default: m.JuzMemorizationPage,
+  })),
+);
+export const HalfPageViewerPage = lazy(() =>
+  import("../pages/app/memorization/half-page-viewer-page.tsx").then((m) => ({
+    default: m.HalfPageViewerPage,
+  })),
+);
 export const StudentGoalsPage = lazy(() =>
   import("../pages/app/goals/student-goals-page.tsx").then((m) => ({
     default: m.StudentGoalsPage,
@@ -157,9 +167,10 @@ export function RootRedirect() {
   const { isAuthenticated, user, isLoading } = useAuth();
   const { profileStatus, isLoading: workspaceLoading } = useWorkspace();
   if (isLoading || (isAuthenticated && workspaceLoading)) return null;
+  const locale = preferredLocale();
   if (isAuthenticated && user) {
     const path = resolvePostAuthPath({
-      locale: DEFAULT_LOCALE,
+      locale,
       role: user.role,
       profileStatus,
     });
@@ -167,7 +178,7 @@ export function RootRedirect() {
       return <Navigate to={path} replace />;
     }
   }
-  return <Navigate to={`/${DEFAULT_LOCALE}/login`} replace />;
+  return <Navigate to={`/${locale}/login`} replace />;
 }
 
 export function ProtectedAppPage({ children }: { children: React.ReactNode }) {

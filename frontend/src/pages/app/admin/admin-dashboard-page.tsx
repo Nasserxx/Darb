@@ -1,5 +1,6 @@
 ﻿import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { CopyIcon } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -7,10 +8,14 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/shared/data-table.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
 import { StatCard } from "@/components/shared/stat-card.tsx";
+import { SuperAdminAuditReasonDialog } from "@/components/shared/super-admin-audit-reason-dialog.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { stuckWorkApi } from "@/features/admin/api/stuck-work-api.ts";
+import {
+  stuckWorkApi,
+  type StuckWorkItem,
+} from "@/features/admin/api/stuck-work-api.ts";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { mosqueAdminsApi } from "@/features/mosque-admins/api/mosque-admins-api.ts";
 import { mosquesApi } from "@/features/mosques/api/mosques-api.ts";
@@ -23,9 +28,20 @@ import { paymentKeys } from "@/features/payments/hooks/query-keys.ts";
 import { getMosquePayments, getPayments } from "@/features/payments/api/payments-api.ts";
 import { studentKeys } from "@/features/students/hooks/query-keys.ts";
 import { studentsApi } from "@/features/students/api/students-api.ts";
-import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
+import { normalizeApiRole, PAYMENTS_UI_ENABLED } from "@/lib/navigation/app-nav.ts";
 import { CircleDot, CreditCard, GraduationCap, Users } from "lucide-react";
 import { formatShortId } from "@/lib/format/ids.ts";
+
+type StuckResolveVerb =
+  | "forceAccept"
+  | "cancel"
+  | "approve"
+  | "reject";
+
+type StuckResolvePending = {
+  item: StuckWorkItem;
+  verb: StuckResolveVerb;
+};
 
 export function AdminDashboardPage() {
   const { t } = useTranslation("app");
@@ -35,6 +51,9 @@ export function AdminDashboardPage() {
   const { mosqueId } = useWorkspace();
   const role = user ? normalizeApiRole(user.role) : null;
   const isSuperAdmin = role === "SUPER_ADMIN";
+  const [stuckResolve, setStuckResolve] = useState<StuckResolvePending | null>(
+    null,
+  );
 
   const stuckWorkQuery = useQuery({
     queryKey: ["admin", "stuck-work"],
@@ -54,11 +73,38 @@ export function AdminDashboardPage() {
     enabled: !isSuperAdmin,
   });
 
+  const resolveStuckWork = useMutation({
+    mutationFn: async ({
+      item,
+      verb,
+      reason,
+    }: StuckResolvePending & { reason: string }) => {
+      switch (verb) {
+        case "forceAccept":
+          return stuckWorkApi.forceAccept(item.resourceId, reason);
+        case "cancel":
+          return stuckWorkApi.cancelInvite(item.resourceId, reason);
+        case "approve":
+          return stuckWorkApi.approveRequest(item.resourceId, reason);
+        case "reject":
+          return stuckWorkApi.rejectRequest(item.resourceId, reason);
+      }
+    },
+    onSuccess: (_data, variables) => {
+      toast.success(t(`admin.stuckWork.${variables.verb}Success`));
+      setStuckResolve(null);
+      void stuckWorkQuery.refetch();
+    },
+  });
+
   const approveJoinRequest = useMutation({
     mutationFn: (id: string) => mosqueAdminsApi.approveJoinRequest(id),
     onSuccess: () => {
       toast.success(t("admin.joinRequests.approveSuccess"));
       void joinRequestsQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : t("onboarding.error"));
     },
   });
 
@@ -67,6 +113,9 @@ export function AdminDashboardPage() {
     onSuccess: () => {
       toast.success(t("admin.joinRequests.rejectSuccess"));
       void joinRequestsQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : t("onboarding.error"));
     },
   });
 
@@ -80,6 +129,7 @@ export function AdminDashboardPage() {
     }
   }
 
+  const pendingListParams = { page: 0, size: 5, status: "PENDING" as const };
   const [studentsQuery, circlesQuery, enrollmentsQuery, paymentsQuery] =
     useQueries({
       queries: [
@@ -92,8 +142,8 @@ export function AdminDashboardPage() {
           queryFn: () => circlesApi.list({ page: 0, size: 1 }),
         },
         {
-          queryKey: enrollmentKeys.list({ page: 0, size: 5 }),
-          queryFn: () => enrollmentsApi.list({ page: 0, size: 5 }),
+          queryKey: enrollmentKeys.list(pendingListParams),
+          queryFn: () => enrollmentsApi.list(pendingListParams),
         },
         {
           queryKey: paymentKeys.list({ page: 0, size: 100 }),
@@ -101,16 +151,23 @@ export function AdminDashboardPage() {
             mosqueId
               ? getMosquePayments(mosqueId, { page: 0, size: 100 })
               : getPayments({ page: 0, size: 100 }),
-          enabled: true,
+          enabled: PAYMENTS_UI_ENABLED,
         },
       ],
     });
 
-  const pendingEnrollments =
-    enrollmentsQuery.data?.content.filter((e) => e.status === "PENDING") ?? [];
+  const pendingEnrollmentCount =
+    enrollmentsQuery.data?.totalElements ?? "—";
   const overdueCount =
     paymentsQuery.data?.content.filter((p) => p.status === "OVERDUE").length ??
     0;
+
+  const stuckConfirmTitle = stuckResolve
+    ? t(`admin.stuckWork.${stuckResolve.verb}Title`)
+    : "";
+  const stuckConfirmLabel = stuckResolve
+    ? t(`admin.stuckWork.${stuckResolve.verb}`)
+    : "";
 
   return (
     <div className="auth-stagger flex flex-col gap-8">
@@ -129,11 +186,13 @@ export function AdminDashboardPage() {
                 {t("admin.quickActions.createCircle")}
               </Link>
             </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link to={`/${localePrefix}/payments`}>
-                {t("admin.quickActions.recordPayment")}
-              </Link>
-            </Button>
+            {PAYMENTS_UI_ENABLED ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/${localePrefix}/payments`}>
+                  {t("admin.quickActions.recordPayment")}
+                </Link>
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -151,15 +210,17 @@ export function AdminDashboardPage() {
         />
         <StatCard
           title={t("admin.stats.pendingEnrollments")}
-          value={pendingEnrollments.length}
+          value={pendingEnrollmentCount}
           icon={GraduationCap}
         />
-        <StatCard
-          title={t("admin.stats.overduePayments")}
-          value={overdueCount}
-          icon={CreditCard}
-          accent="gold"
-        />
+        {PAYMENTS_UI_ENABLED ? (
+          <StatCard
+            title={t("admin.stats.overduePayments")}
+            value={overdueCount}
+            icon={CreditCard}
+            accent="gold"
+          />
+        ) : null}
       </div>
 
       {isSuperAdmin ? (
@@ -188,7 +249,11 @@ export function AdminDashboardPage() {
                   id: "kind",
                   header: t("admin.stuckWork.kind"),
                   cell: (row) => (
-                    <Badge variant="secondary">{row.kind.replace(/_/g, " ")}</Badge>
+                    <Badge variant="secondary">
+                      {t(`admin.stuckWork.kinds.${row.kind}`, {
+                        defaultValue: row.kind.replace(/_/g, " "),
+                      })}
+                    </Badge>
                   ),
                 },
                 {
@@ -209,13 +274,61 @@ export function AdminDashboardPage() {
                 {
                   id: "actions",
                   header: t("actions.view"),
-                  cell: (row) => (
-                    <Button size="sm" variant="outline" asChild>
-                      <Link to={`/${localePrefix}/mosques/${row.mosqueId}`}>
-                        {t("admin.stuckWork.openMosqueDesk")}
-                      </Link>
-                    </Button>
-                  ),
+                  cell: (row) => {
+                    const isInvite = row.direction === "ADMIN_INVITE";
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {isInvite ? (
+                          <>
+                            <Button
+                              size="sm"
+                              disabled={resolveStuckWork.isPending}
+                              onClick={() =>
+                                setStuckResolve({
+                                  item: row,
+                                  verb: "forceAccept",
+                                })
+                              }
+                            >
+                              {t("admin.stuckWork.forceAccept")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={resolveStuckWork.isPending}
+                              onClick={() =>
+                                setStuckResolve({ item: row, verb: "cancel" })
+                              }
+                            >
+                              {t("admin.stuckWork.cancel")}
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              disabled={resolveStuckWork.isPending}
+                              onClick={() =>
+                                setStuckResolve({ item: row, verb: "approve" })
+                              }
+                            >
+                              {t("admin.stuckWork.approve")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={resolveStuckWork.isPending}
+                              onClick={() =>
+                                setStuckResolve({ item: row, verb: "reject" })
+                              }
+                            >
+                              {t("admin.stuckWork.reject")}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  },
                 },
               ]}
             />
@@ -230,14 +343,7 @@ export function AdminDashboardPage() {
         <CardContent>
           <DataTable
             isLoading={enrollmentsQuery.isLoading}
-            data={
-              enrollmentsQuery.data
-                ? {
-                    ...enrollmentsQuery.data,
-                    content: pendingEnrollments,
-                  }
-                : undefined
-            }
+            data={enrollmentsQuery.data}
             emptyMessage={t("table.empty")}
             columns={[
               {
@@ -340,32 +446,65 @@ export function AdminDashboardPage() {
               {
                 id: "actions",
                 header: t("actions.view"),
-                cell: (row) => (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      disabled={approveJoinRequest.isPending}
-                      onClick={() => approveJoinRequest.mutate(row.id)}
-                    >
-                      {t("actions.approve")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={rejectJoinRequest.isPending}
-                      onClick={() => rejectJoinRequest.mutate(row.id)}
-                    >
-                      {t("actions.reject")}
-                    </Button>
-                  </div>
-                ),
+                cell: (row) => {
+                  // Mirror SA stuck-work: ADMIN_INVITE ≠ approve/reject verbs.
+                  // ponytail: no MA cancel — refuse API is invitee-only.
+                  const isInvite = row.direction === "ADMIN_INVITE";
+                  if (isInvite) {
+                    return (
+                      <Badge variant="secondary">
+                        {t("membership.invite.sent")}
+                      </Badge>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        disabled={approveJoinRequest.isPending}
+                        onClick={() => approveJoinRequest.mutate(row.id)}
+                      >
+                        {t("actions.approve")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={rejectJoinRequest.isPending}
+                        onClick={() => rejectJoinRequest.mutate(row.id)}
+                      >
+                        {t("actions.reject")}
+                      </Button>
+                    </div>
+                  );
+                },
               },
             ]}
           />
         </CardContent>
       </Card>
       ) : null}
+
+      <SuperAdminAuditReasonDialog
+        open={Boolean(stuckResolve)}
+        onOpenChange={(open) => {
+          if (!open) setStuckResolve(null);
+        }}
+        title={stuckConfirmTitle}
+        description={
+          stuckResolve
+            ? t("admin.stuckWork.resolveDescription", {
+                summary: stuckResolve.item.summary,
+                mosque: stuckResolve.item.mosqueName,
+              })
+            : undefined
+        }
+        confirmLabel={stuckConfirmLabel}
+        isPending={resolveStuckWork.isPending}
+        onConfirm={(reason) => {
+          if (!stuckResolve) return;
+          void resolveStuckWork.mutateAsync({ ...stuckResolve, reason });
+        }}
+      />
     </div>
   );
 }
-

@@ -16,4 +16,8 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID>, JpaSpec
     Page<Teacher> findByMosqueId(UUID mosqueId, Pageable pageable);
     List<Teacher> findByIsActiveTrue();
     List<Teacher> findByIsAvailableTrueAndIsActiveTrue();
+
+    boolean existsByUserIdAndMosqueId(UUID userId, UUID mosqueId);
+    boolean existsByUserIdAndMosqueIdAndIsActiveTrue(UUID userId, UUID mosqueId);
+    List<Teacher> findByUserIdAndIsActiveTrue(UUID userId);
 }

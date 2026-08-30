@@ -1,6 +1,9 @@
 import type { MosqueAdminResponse } from "@/features/mosque-admins/types/index.ts";
+import type { ParentRelationship } from "@/lib/types/api.ts";
 
 import type { MosqueResponse } from "./index.ts";
+
+export type JoinRequestDirection = "MEMBER_REQUEST" | "ADMIN_INVITE";
 
 export interface MosqueOnboardResponse {
   mosque: MosqueResponse;
@@ -31,6 +34,9 @@ export interface MemberJoinRequestResponse {
   requestedRole: string;
   status: string;
   createdAt: string;
+  direction?: JoinRequestDirection;
+  linkedStudentId?: string | null;
+  relationship?: ParentRelationship | null;
 }
 
 export interface MosqueInviteCodesResponse {

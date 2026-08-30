@@ -5,6 +5,7 @@ import com.darb.dtos.common.PageResponse;
 import com.darb.dtos.enrollment.EnrollmentCreateRequest;
 import com.darb.dtos.enrollment.EnrollmentResponse;
 import com.darb.dtos.enrollment.EnrollmentUpdateRequest;
+import com.darb.entities.enums.EnrollmentStatus;
 import com.darb.services.EnrollmentService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,8 +46,12 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) EnrollmentStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<EnrollmentResponse> page = enrollmentService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<EnrollmentResponse> page = enrollmentService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q, status);
         return ResponseEntity.ok(ApiResponse.<PageResponse<EnrollmentResponse>>builder()
                 .success(true)
                 .message("Enrollments retrieved successfully")
@@ -128,13 +133,16 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> create(
             Authentication authentication,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody EnrollmentCreateRequest request) {
-        request.setApprovedBy((UUID) authentication.getPrincipal());
+        UUID callerId = (UUID) authentication.getPrincipal();
+        request.setApprovedBy(callerId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<EnrollmentResponse>builder()
                         .success(true)
                         .message("Enrollment created successfully")
-                        .data(enrollmentService.create(request))
+                        .data(enrollmentService.create(
+                                callerId, request, auditReasonHeader, request.getAuditReason()))
                         .build());
     }
 

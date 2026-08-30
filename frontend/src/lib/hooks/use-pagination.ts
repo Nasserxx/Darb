@@ -15,10 +15,11 @@ export function usePagination(defaultSize = DEFAULT_SIZE) {
   const q = searchParams.get("q") || undefined;
   const country = searchParams.get("country") || undefined;
   const city = searchParams.get("city") || undefined;
+  const mosqueId = searchParams.get("mosqueId") || undefined;
 
   const params: PageParams = useMemo(
-    () => ({ page, size, sort, q, country, city }),
-    [page, size, sort, q, country, city],
+    () => ({ page, size, sort, q, country, city, mosqueId }),
+    [page, size, sort, q, country, city, mosqueId],
   );
 
   const setPage = useCallback(
@@ -61,7 +62,7 @@ export function usePagination(defaultSize = DEFAULT_SIZE) {
   );
 
   const setFilter = useCallback(
-    (partial: Partial<Pick<PageParams, "q" | "country" | "city">>) => {
+    (partial: Partial<Pick<PageParams, "q" | "country" | "city" | "mosqueId">>) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -88,6 +89,7 @@ export function usePagination(defaultSize = DEFAULT_SIZE) {
     q,
     country,
     city,
+    mosqueId,
     params,
     setPage,
     setSize,

@@ -27,8 +27,29 @@ function stripLocalePrefix(path: string): string {
   return path.replace(/^\/[a-z]{2}(?=\/)/, "") || path;
 }
 
+/** AppShell chrome paths kept reachable when absent from sidebar APP_NAV_ITEMS. */
+const CHROME_ALLOWED_HREFS = ["/notifications"] as const;
+
+const CHROME_NOTIFICATION_ROLES = new Set([
+  "SUPER_ADMIN",
+  "MOSQUE_ADMIN",
+  "TEACHER",
+  "STUDENT",
+  "PARENT",
+]);
+
 export function isPathAllowedForRole(role: string, path: string): boolean {
   const normalized = stripLocalePrefix(path);
+  const roleKey = role.toUpperCase().replace(/-/g, "_");
+  // ponytail: Bell / View all → /notifications even when sidebar roles: []
+  if (
+    CHROME_NOTIFICATION_ROLES.has(roleKey) &&
+    CHROME_ALLOWED_HREFS.some(
+      (href) => normalized === href || normalized.startsWith(`${href}/`),
+    )
+  ) {
+    return true;
+  }
   const allowed = getNavItemsForRole(role).map((item) => item.href);
   return allowed.some(
     (href) => normalized === href || normalized.startsWith(`${href}/`),
@@ -51,7 +72,9 @@ export function resolvePostAuthPath(options: {
 
   if (profileStatus === "assigned") {
     if (returnTo && isPathAllowedForRole(role, returnTo)) {
-      return returnTo.startsWith("/") ? returnTo : `/${locale}${returnTo}`;
+      const path = returnTo.startsWith("/") ? returnTo : `/${returnTo}`;
+      // re-prefix with current locale so polluted /en/... returnTo never sticks after /ar login
+      return `/${locale}${stripLocalePrefix(path)}`;
     }
     return `/${locale}${getDefaultLandingPath(role)}`;
   }
@@ -70,7 +93,11 @@ export function resolvePostAuthPath(options: {
 export const JOIN_INTENT_KEY = "darb.joinIntent";
 
 export function saveJoinIntent(code: string, role: string): void {
-  sessionStorage.setItem(JOIN_INTENT_KEY, JSON.stringify({ code, role }));
+  // Store API enum form (TEACHER) so member/parent onboarding can === / toUpperCase match
+  sessionStorage.setItem(
+    JOIN_INTENT_KEY,
+    JSON.stringify({ code, role: role.trim().toUpperCase() }),
+  );
 }
 
 export function consumeJoinIntent(): { code: string; role: string } | null {

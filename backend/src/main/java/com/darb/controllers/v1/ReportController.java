@@ -67,9 +67,11 @@ public class ReportController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ReportResponse>>> findByMosque(
+            Authentication authentication,
             @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID mosqueId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<ReportResponse> page = reportService.findByMosqueId(mosqueId, pageable);
+        Page<ReportResponse> page = reportService.findByMosqueId(
+                (UUID) authentication.getPrincipal(), mosqueId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<ReportResponse>>builder()
                 .success(true)
                 .message("Mosque reports retrieved successfully")
@@ -104,7 +106,7 @@ public class ReportController {
                 .body(ApiResponse.<ReportResponse>builder()
                         .success(true)
                         .message("Report generated successfully")
-                        .data(reportService.create(request))
+                        .data(reportService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 }

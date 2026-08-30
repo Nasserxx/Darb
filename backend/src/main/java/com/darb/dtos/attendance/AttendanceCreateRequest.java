@@ -31,6 +31,7 @@ public class AttendanceCreateRequest {
     @Schema(description = "Attendance status", example = "PRESENT")
     private AttendanceStatus status;
 
+    @NotNull
     @Schema(description = "Scheduled session start time", example = "16:00")
     private LocalTime scheduledStart;
 
@@ -51,4 +52,7 @@ public class AttendanceCreateRequest {
 
     @Schema(description = "User ID who recorded the attendance")
     private UUID recordedBy;
+
+    @Schema(description = "Audit reason for super admin override (min 8 characters)")
+    private String auditReason;
 }

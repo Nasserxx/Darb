@@ -7,6 +7,12 @@ import { PageHeader } from "@/components/shared/page-header.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  useAcceptJoinRequest,
+  useMyInvitations,
+  useRefuseJoinRequest,
+} from "@/features/mosques/hooks/use-mosques.ts";
+import type { MemberJoinRequestResponse } from "@/features/mosques/types/onboard.ts";
+import {
   useMarkNotificationAsRead,
   useMyNotifications,
 } from "@/features/notifications/hooks/use-notifications.ts";
@@ -24,6 +30,12 @@ export function NotificationsPage() {
   const { params, setPage } = usePagination();
   const { data, isLoading } = useMyNotifications(params);
   const markRead = useMarkNotificationAsRead();
+  const { data: invitationsData, isLoading: invitationsLoading, isError: invitationsError } =
+    useMyInvitations();
+  const invitations = invitationsError ? [] : (invitationsData ?? []);
+  const acceptInvite = useAcceptJoinRequest();
+  const refuseInvite = useRefuseJoinRequest();
+  const inviteBusy = acceptInvite.isPending || refuseInvite.isPending;
 
   const columns = useMemo(
     () => [
@@ -97,12 +109,75 @@ export function NotificationsPage() {
     }
   }
 
+  async function handleAccept(row: MemberJoinRequestResponse) {
+    try {
+      await acceptInvite.mutateAsync(row.id);
+      toast.success(t("membership.invite.acceptSuccess"));
+    } catch (error) {
+      toast.error(toMutationError(error, t).message);
+    }
+  }
+
+  async function handleRefuse(row: MemberJoinRequestResponse) {
+    try {
+      await refuseInvite.mutateAsync(row.id);
+      toast.success(t("membership.invite.refuseSuccess"));
+    } catch (error) {
+      toast.error(toMutationError(error, t).message);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("notifications.title")}
         description={t("notifications.description")}
       />
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">{t("membership.invite.title")}</h2>
+        {invitationsLoading ? (
+          <p className="text-sm text-muted-foreground">
+            {t("membership.invite.loading")}
+          </p>
+        ) : invitations.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t("membership.invite.empty")}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {invitations.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex flex-col gap-1">
+                  <p className="font-medium">{row.mosqueName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("membership.invite.asRole", { role: row.requestedRole })}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={inviteBusy}
+                    onClick={() => void handleAccept(row)}
+                  >
+                    {t("membership.invite.accept")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={inviteBusy}
+                    onClick={() => void handleRefuse(row)}
+                  >
+                    {t("membership.invite.refuse")}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <DataTable
         columns={columns}
         data={data}

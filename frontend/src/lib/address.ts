@@ -1,6 +1,6 @@
 import { localizeCountry } from "./countries.ts";
 
-export type MosqueAddressSource = {
+export type AddressSource = {
   city?: string | null;
   addressCountry?: string | null;
   addressPostalCode?: string | null;
@@ -8,6 +8,9 @@ export type MosqueAddressSource = {
   addressHouseNumber?: string | null;
   addressState?: string | null;
 };
+
+/** @deprecated Prefer AddressSource — kept for mosque call sites. */
+export type MosqueAddressSource = AddressSource;
 
 const CONTROL_OR_BIDI_CHARS_RE =
   /[\p{Cc}\u202a-\u202e\u2066-\u2069\u200b]/gu;
@@ -20,16 +23,16 @@ function normalizeTextPart(value: string | null | undefined): string {
     .trim();
 }
 
-export function formatMosqueAddress(
-  mosque: MosqueAddressSource,
+export function formatAddress(
+  source: AddressSource,
   locale = "en",
 ): string | null {
-  const street = normalizeTextPart(mosque.addressStreet);
-  const houseNumber = normalizeTextPart(mosque.addressHouseNumber);
-  const postalCode = normalizeTextPart(mosque.addressPostalCode);
-  const city = normalizeTextPart(mosque.city);
-  const state = normalizeTextPart(mosque.addressState);
-  const country = localizeCountry(mosque.addressCountry, locale);
+  const street = normalizeTextPart(source.addressStreet);
+  const houseNumber = normalizeTextPart(source.addressHouseNumber);
+  const postalCode = normalizeTextPart(source.addressPostalCode);
+  const city = normalizeTextPart(source.city);
+  const state = normalizeTextPart(source.addressState);
+  const country = localizeCountry(source.addressCountry, locale);
 
   const streetLine = [street, houseNumber].filter(Boolean).join(" ");
   const cityLine = [postalCode, city].filter(Boolean).join(" ");
@@ -40,4 +43,22 @@ export function formatMosqueAddress(
     .join(", ");
 
   return address || null;
+}
+
+export function formatMosqueAddress(
+  mosque: MosqueAddressSource,
+  locale = "en",
+): string | null {
+  return formatAddress(mosque, locale);
+}
+
+export function hasAddressValues(source: AddressSource): boolean {
+  return Boolean(
+    normalizeTextPart(source.addressCountry) ||
+      normalizeTextPart(source.city) ||
+      normalizeTextPart(source.addressStreet) ||
+      normalizeTextPart(source.addressHouseNumber) ||
+      normalizeTextPart(source.addressPostalCode) ||
+      normalizeTextPart(source.addressState),
+  );
 }

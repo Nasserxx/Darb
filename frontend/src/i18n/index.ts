@@ -2,6 +2,8 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import ar from './locales/ar.json'
+import appAr from './locales/app-ar.json'
+import appDe from './locales/app-de.json'
 import appEn from './locales/app-en.json'
 import de from './locales/de.json'
 import en from './locales/en.json'
@@ -26,8 +28,8 @@ type LocaleBundle = { common: Record<string, unknown>; auth: Record<string, unkn
 
 const resources = {
   en: { common: (en as LocaleBundle).common, auth: (en as LocaleBundle).auth, app: appEn },
-  ar: { common: (ar as LocaleBundle).common, auth: (ar as LocaleBundle).auth, app: appEn },
-  de: { common: (de as LocaleBundle).common, auth: (de as LocaleBundle).auth, app: appEn },
+  ar: { common: (ar as LocaleBundle).common, auth: (ar as LocaleBundle).auth, app: appAr },
+  de: { common: (de as LocaleBundle).common, auth: (de as LocaleBundle).auth, app: appDe },
 } as const
 
 function readStoredLocale(): string | null {
@@ -42,6 +44,11 @@ function normalizeLocale(value: string | null | undefined): Locale {
     return value as Locale
   }
   return DEFAULT_LOCALE
+}
+
+/** Stored locale, else DEFAULT_LOCALE. Use for `/` redirects — never hardcode en. */
+export function preferredLocale(): Locale {
+  return normalizeLocale(readStoredLocale())
 }
 
 export function isRtlLocale(locale?: string): boolean {

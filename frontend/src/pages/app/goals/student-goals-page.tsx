@@ -32,6 +32,7 @@ import {
   type GoalCreateFormValues,
 } from "@/features/goals/schemas/goal-create.schema.ts";
 import type { GoalResponse } from "@/features/goals/types/index.ts";
+import { useStudent } from "@/features/students/hooks/use-students.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import {
@@ -75,6 +76,11 @@ export function StudentGoalsPage() {
 
   const role = user ? normalizeApiRole(user.role) : null;
   const canManage = canManageGoals(user?.role);
+  const { data: student } = useStudent(studentId ?? "", {
+    enabled: Boolean(studentId),
+  });
+  // ponytail: Former = WITHDRAWN; no isActive on StudentResponse
+  const studentActive = Boolean(student && student.status !== "WITHDRAWN");
 
   const { data, isLoading } = useGoalsByStudent(studentId, params);
   const { data: enrollmentsPage } = useEnrollments({ page: 0, size: 500 });
@@ -214,7 +220,7 @@ export function StudentGoalsPage() {
         title={t("goals.title")}
         description={t("goals.description")}
         actions={
-          canManage ? (
+          canManage && studentActive ? (
             <Button onClick={() => setDialogOpen(true)}>{t("goals.create")}</Button>
           ) : null
         }

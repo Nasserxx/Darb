@@ -39,17 +39,20 @@ public class ReportService {
     @Transactional(readOnly = true)
     public ReportResponse findById(UUID callerId, UUID id) {
         Report report = findEntityOrThrow(id);
-        mosqueAccessService.assertCanAccessMosque(callerId, report.getMosque().getId());
+        mosqueAccessService.assertCanAccessMosqueOrAuthor(
+                callerId, report.getMosque().getId(), report.getGeneratedBy().getId());
         return toResponse(report);
     }
 
     @Transactional(readOnly = true)
-    public Page<ReportResponse> findByMosqueId(UUID mosqueId, Pageable pageable) {
+    public Page<ReportResponse> findByMosqueId(UUID callerId, UUID mosqueId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessMosque(callerId, mosqueId);
         return reportRepository.findByMosqueId(mosqueId, pageable).map(this::toResponse);
     }
 
     @Transactional
-    public ReportResponse create(ReportCreateRequest request) {
+    public ReportResponse create(UUID callerId, ReportCreateRequest request) {
+        mosqueAccessService.assertCanAccessMosque(callerId, request.getMosqueId());
         Mosque mosque = mosqueRepository.findById(request.getMosqueId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
         User generatedBy = userRepository.findById(request.getGeneratedBy())
@@ -69,8 +72,9 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportResponse update(UUID id, ReportUpdateRequest request) {
+    public ReportResponse update(UUID callerId, UUID id, ReportUpdateRequest request) {
         Report report = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, report.getMosque().getId());
 
         if (request.getTitle() != null) {
             report.setTitle(request.getTitle());
@@ -86,7 +90,9 @@ public class ReportService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
+        Report report = findEntityOrThrow(id);
+        mosqueAccessService.assertCanAccessMosque(callerId, report.getMosque().getId());
         reportRepository.deleteById(id);
     }
 

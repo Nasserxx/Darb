@@ -7,6 +7,7 @@ import com.darb.entities.Circle;
 import com.darb.entities.Enrollment;
 import com.darb.entities.Student;
 import com.darb.entities.User;
+import com.darb.entities.enums.CircleStatus;
 import com.darb.entities.enums.EnrollmentStatus;
 import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ResourceNotFoundException;
@@ -15,10 +16,12 @@ import com.darb.repositories.EnrollmentRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
+import com.darb.util.NameFilterSpecs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +41,23 @@ public class EnrollmentService {
     private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
-    public Page<EnrollmentResponse> findAll(UUID callerId, Pageable pageable) {
-        return mosqueAccessService.pageForCaller(
-                callerId, pageable,
-                mosqueId -> enrollmentRepository.findByCircle_MosqueId(mosqueId, pageable),
-                enrollmentRepository::findAll
-        ).map(this::toResponse);
+    public Page<EnrollmentResponse> findAll(UUID callerId, Pageable pageable, UUID mosqueIdFilter, String q,
+                                            EnrollmentStatus status) {
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueIdFilter, q);
+        if (mosqueAccessService.shouldReturnEmptyListPage(callerId)) {
+            return Page.empty(pageable);
+        }
+        UUID mosqueId = mosqueAccessService.resolveEffectiveMosqueIdForList(callerId, mosqueIdFilter);
+        Specification<Enrollment> spec = (root, query, cb) -> cb.conjunction();
+        if (mosqueId != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("circle").get("mosque").get("id"), mosqueId));
+        }
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+        spec = NameFilterSpecs.and(spec, NameFilterSpecs.enrollmentStudentFullNameLike(q));
+        return enrollmentRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -60,14 +74,29 @@ public class EnrollmentService {
     }
 
     @Transactional
-    public EnrollmentResponse create(EnrollmentCreateRequest request) {
+    public EnrollmentResponse create(UUID callerId, EnrollmentCreateRequest request,
+                                     String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
-        Circle circle = circleRepository.findById(request.getCircleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
+
+        EnrollmentStatus status = request.getStatus() != null ? request.getStatus() : EnrollmentStatus.PENDING;
+        boolean activating = status == EnrollmentStatus.ACTIVE;
+        Circle circle = activating
+                ? circleRepository.findByIdForUpdate(request.getCircleId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()))
+                : circleRepository.findById(request.getCircleId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
+
+        mosqueAccessService.assertCanAccessStudent(callerId, student);
+        mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
 
         if (!student.getMosque().getId().equals(circle.getMosque().getId())) {
             throw new BadRequestException("Student and circle must belong to the same mosque");
+        }
+
+        if (activating) {
+            assertCanActivateInCircle(circle);
         }
 
         User approvedBy = userRepository.findById(request.getApprovedBy())
@@ -76,13 +105,23 @@ public class EnrollmentService {
         Enrollment enrollment = Enrollment.builder()
                 .student(student)
                 .circle(circle)
-                .status(request.getStatus() != null ? request.getStatus() : EnrollmentStatus.PENDING)
+                .status(status)
                 .enrolledDate(request.getEnrolledDate() != null ? request.getEnrolledDate() : LocalDate.now())
                 .approvedBy(approvedBy)
                 .notes(request.getNotes())
                 .build();
 
-        return toResponse(enrollmentRepository.save(enrollment));
+        Enrollment saved = enrollmentRepository.save(enrollment);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    circle.getMosque().getId(),
+                    "ENROLLMENT_CREATE",
+                    auditReason,
+                    "Enrollment",
+                    saved.getId());
+        }
+        return toResponse(saved);
     }
 
     @Transactional
@@ -93,6 +132,16 @@ public class EnrollmentService {
         mosqueAccessService.assertCanAccessStudent(callerId, enrollment.getStudent().getId());
 
         if (request.getStatus() != null) {
+            if (request.getStatus() == EnrollmentStatus.ACTIVE) {
+                if (enrollment.getStatus() == EnrollmentStatus.ACTIVE) {
+                    // D17: already ACTIVE → idempotent 200
+                    return toResponse(enrollment);
+                }
+                Circle circle = circleRepository.findByIdForUpdate(enrollment.getCircle().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Circle", "id", enrollment.getCircle().getId()));
+                assertCanActivateInCircle(circle);
+            }
             enrollment.setStatus(request.getStatus());
         }
         if (request.getWithdrawnDate() != null) {
@@ -122,6 +171,22 @@ public class EnrollmentService {
         enrollment.setStatus(EnrollmentStatus.WITHDRAWN);
         enrollment.setWithdrawnDate(LocalDate.now());
         enrollmentRepository.save(enrollment);
+    }
+
+    /** D19 + D2: circle must be ACTIVE; ACTIVE enrollments must fit capacity (null = unlimited). */
+    private void assertCanActivateInCircle(Circle circle) {
+        if (circle.getStatus() != CircleStatus.ACTIVE) {
+            throw new BadRequestException("Cannot activate enrollment: circle is not ACTIVE");
+        }
+        Integer capacity = circle.getCapacity();
+        if (capacity == null) {
+            return;
+        }
+        long activeCount = enrollmentRepository.countByCircleIdAndStatus(
+                circle.getId(), EnrollmentStatus.ACTIVE);
+        if (activeCount >= capacity) {
+            throw new BadRequestException("Circle is at capacity");
+        }
     }
 
     private Enrollment findEntityOrThrow(UUID id) {

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-import { Badge } from "@/components/ui/badge";
+import { EnrollmentStatusBadge } from "@/features/enrollments/components/enrollment-status-badge.tsx";
 import type { StudentResponse } from "@/features/students/types/index.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
 
@@ -14,7 +14,6 @@ export function StudentDetailCard({ student }: StudentDetailCardProps) {
   const fields = [
     { label: t("students.userId"), value: student.fullName ?? formatShortId(student.userId) },
     { label: t("students.mosqueId"), value: student.mosqueName ?? formatShortId(student.mosqueId) },
-    { label: t("students.nationalId"), value: student.nationalId ?? "—" },
     { label: t("students.memorizedJuz"), value: student.memorizedJuz ?? "—" },
     { label: t("students.totalAbsences"), value: student.totalAbsences },
     { label: t("students.totalLateArrivals"), value: student.totalLateArrivals },
@@ -25,7 +24,7 @@ export function StudentDetailCard({ student }: StudentDetailCardProps) {
     <div className="rounded-lg border border-border bg-card">
       <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
         <h2 className="font-serif text-xl font-semibold">{t("students.detail")}</h2>
-        <Badge variant="outline">{t(`enums.enrollmentStatus.${student.status}`)}</Badge>
+        <EnrollmentStatusBadge status={student.status} />
       </div>
       <dl className="grid gap-4 p-6 sm:grid-cols-2">
         {fields.map((field) => (

@@ -1,4 +1,9 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+
+import {
+  MESSAGES_UI_ENABLED,
+  PAYMENTS_UI_ENABLED,
+} from "@/lib/navigation/app-nav.ts";
 
 import { GuestRoute } from "./guest-route.tsx";
 import { LocaleLayout } from "./locale-layout.tsx";
@@ -34,6 +39,8 @@ import {
   StudentDetailPage,
   StudentGoalsPage,
   StudentMemorizationPage,
+  JuzMemorizationPage,
+  HalfPageViewerPage,
   StudentsPage,
   TeachersPage,
 } from "./route-elements.tsx";
@@ -154,6 +161,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "parent-links",
+        element: <Navigate to="../parent-students" relative="path" replace />,
+      },
+      {
         path: "circles",
         element: (
           <ProtectedAppPage>
@@ -179,7 +190,21 @@ export const router = createBrowserRouter([
         path: "messages",
         element: (
           <ProtectedAppPage>
-            <MessagesPage />
+            <RoleRoute
+              allowed={
+                MESSAGES_UI_ENABLED
+                  ? [
+                      "SUPER_ADMIN",
+                      "MOSQUE_ADMIN",
+                      "TEACHER",
+                      "STUDENT",
+                      "PARENT",
+                    ]
+                  : []
+              }
+            >
+              <MessagesPage />
+            </RoleRoute>
           </ProtectedAppPage>
         ),
       },
@@ -187,7 +212,21 @@ export const router = createBrowserRouter([
         path: "messages/circle/:id",
         element: (
           <ProtectedAppPage>
-            <CircleMessagesPage />
+            <RoleRoute
+              allowed={
+                MESSAGES_UI_ENABLED
+                  ? [
+                      "SUPER_ADMIN",
+                      "MOSQUE_ADMIN",
+                      "TEACHER",
+                      "STUDENT",
+                      "PARENT",
+                    ]
+                  : []
+              }
+            >
+              <CircleMessagesPage />
+            </RoleRoute>
           </ProtectedAppPage>
         ),
       },
@@ -203,7 +242,11 @@ export const router = createBrowserRouter([
         path: "payments",
         element: (
           <ProtectedAppPage>
-            <RoleRoute allowed={["SUPER_ADMIN", "MOSQUE_ADMIN"]}>
+            <RoleRoute
+              allowed={
+                PAYMENTS_UI_ENABLED ? ["SUPER_ADMIN", "MOSQUE_ADMIN"] : []
+              }
+            >
               <PaymentsPage />
             </RoleRoute>
           </ProtectedAppPage>
@@ -253,6 +296,42 @@ export const router = createBrowserRouter([
               ]}
             >
               <StudentMemorizationPage />
+            </RoleRoute>
+          </ProtectedAppPage>
+        ),
+      },
+      {
+        path: "memorization/student/:studentId/juz/:juz",
+        element: (
+          <ProtectedAppPage>
+            <RoleRoute
+              allowed={[
+                "SUPER_ADMIN",
+                "MOSQUE_ADMIN",
+                "TEACHER",
+                "STUDENT",
+                "PARENT",
+              ]}
+            >
+              <JuzMemorizationPage />
+            </RoleRoute>
+          </ProtectedAppPage>
+        ),
+      },
+      {
+        path: "memorization/student/:studentId/page/:page/half/:half",
+        element: (
+          <ProtectedAppPage>
+            <RoleRoute
+              allowed={[
+                "SUPER_ADMIN",
+                "MOSQUE_ADMIN",
+                "TEACHER",
+                "STUDENT",
+                "PARENT",
+              ]}
+            >
+              <HalfPageViewerPage />
             </RoleRoute>
           </ProtectedAppPage>
         ),

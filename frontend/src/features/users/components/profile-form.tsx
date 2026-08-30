@@ -22,11 +22,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { translateRole } from "@/i18n/index.ts";
+import { hasAddressValues } from "@/lib/address.ts";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
 
+import { AddressFields } from "./address-fields.tsx";
 import {
   toUserUpdateRequestBody,
   userUpdateSchema,
@@ -39,10 +41,23 @@ export function ProfileForm() {
   const { data: user, isLoading } = useCurrentUser();
   const updateUser = useUpdateCurrentUser();
 
+  const addressOpen = user
+    ? hasAddressValues({
+        city: user.city,
+        addressCountry: user.addressCountry,
+        addressPostalCode: user.addressPostalCode,
+        addressStreet: user.addressStreet,
+        addressHouseNumber: user.addressHouseNumber,
+        addressState: user.addressState,
+      })
+    : false;
+
   const {
     register,
     handleSubmit,
     control,
+    watch,
+    setValue,
     setError,
     formState: { errors },
   } = useForm<UserUpdateFormValues>({
@@ -54,6 +69,12 @@ export function ProfileForm() {
           gender: user.gender ?? undefined,
           dateOfBirth: user.dateOfBirth ?? "",
           avatarUrl: user.avatarUrl ?? "",
+          addressCountry: user.addressCountry ?? "",
+          city: user.city ?? "",
+          addressStreet: user.addressStreet ?? "",
+          addressHouseNumber: user.addressHouseNumber ?? "",
+          addressPostalCode: user.addressPostalCode ?? "",
+          addressState: user.addressState ?? "",
         }
       : undefined,
   });
@@ -187,6 +208,15 @@ export function ProfileForm() {
               </FieldDescription>
             ) : null}
           </Field>
+
+          <AddressFields
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            idPrefix="profile"
+            defaultOpen={addressOpen}
+          />
         </FieldGroup>
 
         <Button type="submit" disabled={updateUser.isPending} className="w-fit">

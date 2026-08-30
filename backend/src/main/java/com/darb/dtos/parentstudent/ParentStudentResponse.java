@@ -1,5 +1,6 @@
 package com.darb.dtos.parentstudent;
 
+import com.darb.entities.enums.ParentRelationship;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,8 +31,8 @@ public class ParentStudentResponse {
     @Schema(description = "Full name of the student")
     private String studentName;
 
-    @Schema(description = "Relationship to the student", example = "Father")
-    private String relationship;
+    @Schema(description = "Relationship to the student", example = "FATHER")
+    private ParentRelationship relationship;
 
     @Schema(description = "Whether this is the primary parent/guardian")
     private Boolean isPrimary;

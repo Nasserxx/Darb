@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@studiomeyer/local-memory-mcp@2.4.2"
+      ],
+      "env": {
+        "MEMORY_DB_PATH": "${workspaceFolder}/.local-memory-mcp/memory.sqlite"
+      }
+    }
+  }
+}

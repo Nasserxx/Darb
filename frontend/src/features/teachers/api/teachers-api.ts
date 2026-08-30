@@ -4,10 +4,12 @@ import {
   fetchPage,
   mutateData,
 } from "@/lib/api/pagination.ts";
+import type { MemberJoinRequestResponse } from "@/features/mosques/types/onboard.ts";
 import type { ApiResponse, PageParams } from "@/lib/types/api.ts";
 
 import type {
   TeacherCreateRequest,
+  TeacherProvisionRequest,
   TeacherResponse,
   TeacherUpdateRequest,
 } from "../types/index.ts";
@@ -21,7 +23,13 @@ export const teachersApi = {
   getById: (id: string) => fetchData<TeacherResponse>(`${BASE_PATH}/${id}`),
 
   create: (body: TeacherCreateRequest) =>
-    mutateData<TeacherResponse>(BASE_PATH, {
+    mutateData<MemberJoinRequestResponse>(BASE_PATH, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  provision: (body: TeacherProvisionRequest) =>
+    mutateData<TeacherResponse>(`${BASE_PATH}/provision`, {
       method: "POST",
       body: JSON.stringify(body),
     }),

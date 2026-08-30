@@ -1,17 +1,8 @@
 import { useMemo, useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Navigate, useParams } from "react-router-dom";
-import { toast } from "sonner";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 
-import { DataTable } from "@/components/shared/data-table.tsx";
-import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import {
   Select,
   SelectContent,
@@ -19,298 +10,167 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
-import { useEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts";
 import {
-  useCreateMemorization,
-  useMemorizationByStudent,
-} from "@/features/memorization/hooks/use-memorization.ts";
+  useEnrollments,
+  useStudentEnrollments,
+} from "@/features/enrollments/hooks/use-enrollments.ts";
+import { AssignLessonDialog } from "@/features/memorization/components/assign-lesson-dialog.tsx";
+import { JuzGrid } from "@/features/memorization/components/juz-grid.tsx";
+import { LegacySessionsTab } from "@/features/memorization/components/legacy-sessions-tab.tsx";
+import { LessonCard } from "@/features/memorization/components/lesson-card.tsx";
 import {
-  memorizationCreateSchema,
-  toMemorizationCreateRequest,
-  type MemorizationCreateFormValues,
-} from "@/features/memorization/schemas/memorization-create.schema.ts";
-import type { MemorizationProgressResponse } from "@/features/memorization/types/index.ts";
+  useLessonAssignment,
+  useMemorizationCoverage,
+} from "@/features/memorization/hooks/use-mushaf-memorization.ts";
+import { useStudent } from "@/features/students/hooks/use-students.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
-import {
-  applyFieldErrors,
-  toMutationError,
-} from "@/lib/errors/map-api-error.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
-import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import { canManageMemorization } from "@/lib/navigation/role-permissions.ts";
-
-const GRADES = [
-  "EXCELLENT",
-  "VERY_GOOD",
-  "GOOD",
-  "ACCEPTABLE",
-  "POOR",
-] as const;
-
-function todayLocalDate(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function canAccessStudent(
-  role: ReturnType<typeof normalizeApiRole>,
-  studentId: string,
-  profile: ReturnType<typeof useWorkspace>["profile"],
-): boolean {
-  if (role === "STUDENT") {
-    return profile?.studentId === studentId;
-  }
-  if (role === "PARENT") {
-    return profile?.parentStudentIds?.includes(studentId) ?? false;
-  }
-  return ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER"].includes(role);
-}
+import { canAccessStudentMemorization } from "@/features/memorization/lib/access.ts";
 
 export function StudentMemorizationPage() {
   const { t } = useTranslation("app");
-  const { studentId } = useParams<{ studentId: string }>();
+  const { studentId, locale } = useParams<{ studentId: string; locale: string }>();
+  const [searchParams] = useSearchParams();
+  const localePrefix = locale ?? DEFAULT_LOCALE;
   const { user } = useAuth();
   const { profile } = useWorkspace();
-  const { params, setPage } = usePagination();
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const role = user ? normalizeApiRole(user.role) : null;
   const canManage = canManageMemorization(user?.role);
+  // ponytail: STUDENT/PARENT can't list staff enrollments (403)
+  const studentPath = role === "STUDENT" || role === "PARENT";
+  const { data: student } = useStudent(studentId ?? "", {
+    enabled: Boolean(studentId),
+  });
+  // ponytail: Former = WITHDRAWN; no isActive on StudentResponse
+  const studentActive = Boolean(student && student.status !== "WITHDRAWN");
 
-  const { data, isLoading } = useMemorizationByStudent(studentId, params);
-  const { data: enrollmentsPage } = useEnrollments({ page: 0, size: 500 });
-  const createMemorization = useCreateMemorization();
+  const { data: studentEnrollmentsPage } = useStudentEnrollments(
+    studentId,
+    { page: 0, size: 500 },
+    { enabled: studentPath && Boolean(studentId) },
+  );
+  const { data: staffEnrollmentsPage } = useEnrollments(
+    { page: 0, size: 500 },
+    { enabled: !studentPath },
+  );
+  const enrollmentsPage = studentPath
+    ? studentEnrollmentsPage
+    : staffEnrollmentsPage;
 
   const enrolledCircles = useMemo(
     () =>
       (enrollmentsPage?.content ?? [])
         .filter(
           (enrollment) =>
-            enrollment.studentId === studentId &&
-            enrollment.status === "ACTIVE",
+            enrollment.status === "ACTIVE" &&
+            (studentPath || enrollment.studentId === studentId),
         )
         .map((enrollment) => ({
           circleId: enrollment.circleId,
           circleName: enrollment.circleName,
         })),
-    [enrollmentsPage?.content, studentId],
+    [enrollmentsPage?.content, studentId, studentPath],
   );
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm<MemorizationCreateFormValues>({
-    resolver: zodResolver(memorizationCreateSchema),
-    defaultValues: {
-      studentId: studentId ?? "",
-      circleId: enrolledCircles[0]?.circleId ?? "",
-      teacherId: profile?.teacherId ?? "",
-      surahNumber: 1,
-      ayahFrom: 1,
-      ayahTo: 1,
-      sessionDate: todayLocalDate(),
-      grade: undefined,
-      tajweedScore: undefined,
-      teacherNotes: "",
-      audioUrl: "",
-    },
-  });
+  const [selectedCircleId, setSelectedCircleId] = useState<string | null>(
+    () => searchParams.get("circleId"),
+  );
 
-  if (!studentId || !role || !canAccessStudent(role, studentId, profile)) {
-    return <Navigate to={`/${DEFAULT_LOCALE}/forbidden`} replace />;
-  }
+  const activeCircleId =
+    selectedCircleId ?? enrolledCircles[0]?.circleId ?? "";
 
-  const columns = [
-    {
-      id: "sessionDate",
-      header: t("memorization.sessionDate"),
-      cell: (row: MemorizationProgressResponse) => row.sessionDate,
-    },
-    {
-      id: "surah",
-      header: t("memorization.surah"),
-      cell: (row: MemorizationProgressResponse) => row.surahNumber,
-    },
-    {
-      id: "ayah",
-      header: t("memorization.ayahFrom"),
-      cell: (row: MemorizationProgressResponse) =>
-        `${row.ayahFrom}–${row.ayahTo}`,
-    },
-    {
-      id: "grade",
-      header: t("memorization.grade"),
-      cell: (row: MemorizationProgressResponse) =>
-        row.grade ? (
-          <Badge variant="secondary">
-            {t(`memorization.grades.${row.grade}`)}
-          </Badge>
-        ) : (
-          "—"
-        ),
-    },
-    {
-      id: "tajweed",
-      header: t("memorization.tajweedScore"),
-      cell: (row: MemorizationProgressResponse) => row.tajweedScore ?? "—",
-    },
-  ];
+  const { data: lesson } = useLessonAssignment(studentId, activeCircleId);
+  const { data: coverage, isLoading: coverageLoading } = useMemorizationCoverage(
+    studentId,
+    activeCircleId,
+    "juz",
+  );
 
-  async function onSubmit(values: MemorizationCreateFormValues) {
-    try {
-      await createMemorization.mutateAsync(
-        toMemorizationCreateRequest({
-          ...values,
-          studentId: studentId!,
-          teacherId: profile?.teacherId ?? values.teacherId,
-        }),
-      );
-      toast.success(t("memorization.saved"));
-      setDialogOpen(false);
-      reset();
-    } catch (error) {
-      const { message, fieldErrors } = toMutationError(error, t);
-      if (fieldErrors) {
-        applyFieldErrors(fieldErrors, setError, t);
-      }
-      toast.error(message || t("memorization.saveError"));
-    }
+  if (!studentId || !role || !canAccessStudentMemorization(role, studentId, profile)) {
+    return <Navigate to={`/${localePrefix}/forbidden`} replace />;
   }
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("memorization.title")}
-        description={t("memorization.description")}
+        description={t("memorization.hubDescription")}
         actions={
-          canManage ? (
-            <Button onClick={() => setDialogOpen(true)}>{t("memorization.create")}</Button>
+          canManage && studentActive && enrolledCircles.length > 0 ? (
+            <AssignLessonDialog
+              studentId={studentId}
+              circles={enrolledCircles}
+              defaultCircleId={activeCircleId}
+            />
           ) : null
         }
       />
 
-      <DataTable
-        columns={columns}
-        data={data}
-        isLoading={isLoading}
-        onPageChange={setPage}
-      />
+      {enrolledCircles.length > 1 ? (
+        <div className="max-w-xs">
+          <Select value={activeCircleId} onValueChange={setSelectedCircleId}>
+            <SelectTrigger>
+              <SelectValue placeholder={t("memorization.circle")} />
+            </SelectTrigger>
+            <SelectContent>
+              {enrolledCircles.map((circle) => (
+                <SelectItem key={circle.circleId} value={circle.circleId}>
+                  {circle.circleName ?? formatShortId(circle.circleId)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
-      <EntityFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title={t("memorization.create")}
-        submitLabel={t("actions.save")}
-        isPending={createMemorization.isPending}
-        onSubmit={() => void handleSubmit(onSubmit)()}
-      >
-        <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
-          <FieldGroup>
-            <Field data-invalid={!!errors.circleId}>
-              <FieldLabel>{t("memorization.circle")}</FieldLabel>
-              <Controller
-                control={control}
-                name="circleId"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("onboarding.selectPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {enrolledCircles.map((circle) => (
-                        <SelectItem key={circle.circleId} value={circle.circleId}>
-                          {circle.circleName ?? formatShortId(circle.circleId)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field data-invalid={!!errors.sessionDate}>
-              <FieldLabel htmlFor="session-date">{t("memorization.sessionDate")}</FieldLabel>
-              <Input id="session-date" type="date" {...register("sessionDate")} />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field data-invalid={!!errors.surahNumber}>
-                <FieldLabel htmlFor="surah">{t("memorization.surah")}</FieldLabel>
-                <Input
-                  id="surah"
-                  type="number"
-                  min={1}
-                  max={114}
-                  {...register("surahNumber", { valueAsNumber: true })}
-                />
-              </Field>
-              <Field data-invalid={!!errors.ayahFrom}>
-                <FieldLabel htmlFor="ayah-from">{t("memorization.ayahFrom")}</FieldLabel>
-                <Input
-                  id="ayah-from"
-                  type="number"
-                  min={1}
-                  {...register("ayahFrom", { valueAsNumber: true })}
-                />
-              </Field>
-              <Field data-invalid={!!errors.ayahTo}>
-                <FieldLabel htmlFor="ayah-to">{t("memorization.ayahTo")}</FieldLabel>
-                <Input
-                  id="ayah-to"
-                  type="number"
-                  min={1}
-                  {...register("ayahTo", { valueAsNumber: true })}
-                />
-              </Field>
-            </div>
-            <Field>
-              <FieldLabel>{t("memorization.grade")}</FieldLabel>
-              <Controller
-                control={control}
-                name="grade"
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={(value) =>
-                      field.onChange(value || undefined)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("onboarding.selectPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GRADES.map((grade) => (
-                        <SelectItem key={grade} value={grade}>
-                          {t(`memorization.grades.${grade}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="tajweed">{t("memorization.tajweedScore")}</FieldLabel>
-              <Input
-                id="tajweed"
-                type="number"
-                min={0}
-                max={100}
-                {...register("tajweedScore", { valueAsNumber: true })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="notes">{t("memorization.teacherNotes")}</FieldLabel>
-              <Textarea id="notes" rows={3} {...register("teacherNotes")} />
-            </Field>
-          </FieldGroup>
-        </form>
-      </EntityFormDialog>
+      <Tabs defaultValue="mushaf">
+        <TabsList>
+          <TabsTrigger value="mushaf">{t("memorization.tabMushafProgress")}</TabsTrigger>
+          <TabsTrigger value="legacy">{t("memorization.tabLegacy")}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent
+          value="mushaf"
+          keepMounted={false}
+          className="flex flex-col gap-6 pt-4 data-hidden:hidden"
+        >
+          {lesson ? (
+            <LessonCard
+              lesson={lesson}
+              studentId={studentId}
+              localePrefix={localePrefix}
+            />
+          ) : null}
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">{t("memorization.juzGridTitle")}</h2>
+            <JuzGrid
+              studentId={studentId}
+              localePrefix={localePrefix}
+              circleId={activeCircleId}
+              coverage={coverage?.entries}
+              isLoading={coverageLoading && !!activeCircleId}
+            />
+          </section>
+        </TabsContent>
+
+        <TabsContent
+          value="legacy"
+          keepMounted={false}
+          className="pt-4 data-hidden:hidden"
+        >
+          <LegacySessionsTab
+            studentId={studentId}
+            enrolledCircles={enrolledCircles}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

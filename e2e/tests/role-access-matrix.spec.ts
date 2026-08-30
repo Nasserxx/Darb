@@ -38,7 +38,8 @@ const ROLE_ACCESS_MATRIX: RoleAccessRow[] = [
     prepare: () => createMosqueAdminWithMosque(),
     cases: [
       { path: "/admin", allowed: true, heading: "Mosque command center" },
-      { path: "/payments", allowed: true, heading: "Payments" },
+      { path: "/payments", allowed: false },
+      { path: "/messages", allowed: false },
       { path: "/mosque-admins", allowed: false },
     ],
   },
@@ -51,6 +52,7 @@ const ROLE_ACCESS_MATRIX: RoleAccessRow[] = [
     cases: [
       { path: "/circles", allowed: true, heading: "Study circles" },
       { path: "/payments", allowed: false },
+      { path: "/messages", allowed: false },
     ],
   },
   {
@@ -62,6 +64,7 @@ const ROLE_ACCESS_MATRIX: RoleAccessRow[] = [
     cases: [
       { path: "/dashboard", allowed: true, heading: "Dashboard" },
       { path: "/admin", allowed: false },
+      { path: "/messages", allowed: false },
     ],
   },
 ];

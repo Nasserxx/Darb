@@ -19,6 +19,7 @@ import {
 } from "@/features/students/hooks/use-students.ts";
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
+import { MESSAGES_UI_ENABLED } from "@/lib/navigation/app-nav.ts";
 import { canManageStudents } from "@/lib/navigation/role-permissions.ts";
 import {
   Award,
@@ -187,12 +188,16 @@ export function StudentDetailPage() {
               title: t("studentRecord.achievements"),
               description: t("studentRecord.achievementsDescription"),
             },
-            {
-              to: `/${localePrefix}/messages`,
-              icon: MessageSquare,
-              title: t("studentRecord.messages"),
-              description: t("studentRecord.messagesDescription"),
-            },
+            ...(MESSAGES_UI_ENABLED
+              ? [
+                  {
+                    to: `/${localePrefix}/messages`,
+                    icon: MessageSquare,
+                    title: t("studentRecord.messages"),
+                    description: t("studentRecord.messagesDescription"),
+                  },
+                ]
+              : []),
           ].map((link) => (
             <Link key={link.to} to={link.to}>
               <Card className="h-full transition-colors hover:bg-muted/40">

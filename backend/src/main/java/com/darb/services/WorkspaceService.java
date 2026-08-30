@@ -7,6 +7,7 @@ import com.darb.entities.ParentStudent;
 import com.darb.entities.Student;
 import com.darb.entities.Teacher;
 import com.darb.entities.User;
+import com.darb.entities.enums.EnrollmentStatus;
 import com.darb.entities.enums.JoinRequestStatus;
 import com.darb.entities.enums.MembershipStatus;
 import com.darb.entities.enums.UserRole;
@@ -54,7 +55,8 @@ public class WorkspaceService {
     }
 
     private WorkspaceProfileResponse fromMosqueAdmin(UUID userId) {
-        Optional<MosqueAdmin> admin = mosqueAdminRepository.findByUserId(userId).stream().findFirst();
+        Optional<MosqueAdmin> admin = mosqueAdminRepository.findByUserIdAndIsActiveTrue(userId).stream()
+                .findFirst();
         if (admin.isPresent()) {
             MosqueAdmin assignment = admin.get();
             return WorkspaceProfileResponse.builder()
@@ -68,7 +70,8 @@ public class WorkspaceService {
     }
 
     private WorkspaceProfileResponse fromTeacher(UUID userId) {
-        Optional<Teacher> teacher = teacherRepository.findByUserId(userId).stream().findFirst();
+        Optional<Teacher> teacher = teacherRepository.findByUserIdAndIsActiveTrue(userId).stream()
+                .findFirst();
         if (teacher.isPresent()) {
             Teacher profile = teacher.get();
             return WorkspaceProfileResponse.builder()
@@ -84,7 +87,10 @@ public class WorkspaceService {
     }
 
     private WorkspaceProfileResponse fromStudent(UUID userId) {
-        Optional<Student> student = studentRepository.findByUserId(userId).stream().findFirst();
+        Optional<Student> student = studentRepository
+                .findByUserIdAndStatus(userId, EnrollmentStatus.ACTIVE)
+                .stream()
+                .findFirst();
         if (student.isPresent()) {
             Student profile = student.get();
             return WorkspaceProfileResponse.builder()
@@ -119,6 +125,8 @@ public class WorkspaceService {
     private Optional<WorkspaceProfileResponse> fromPendingJoinRequest(UUID userId, UserRole role) {
         return joinRequestRepository
                 .findByUserIdAndStatusAndRequestedRole(userId, JoinRequestStatus.PENDING, role)
+                .stream()
+                .findFirst()
                 .map(this::toPendingProfile);
     }
 

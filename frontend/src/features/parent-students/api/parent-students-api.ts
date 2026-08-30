@@ -1,9 +1,11 @@
 import { apiFetch } from "@/lib/api-client.ts";
+import { withAuditReason } from "@/lib/api/audit-reason.ts";
 import {
   fetchData,
   fetchPage,
   mutateData,
 } from "@/lib/api/pagination.ts";
+import type { MemberJoinRequestResponse } from "@/features/mosques/types/onboard.ts";
 import type { StudentResponse } from "@/features/students/types/index.ts";
 import type { ApiResponse, PageParams } from "@/lib/types/api.ts";
 import type {
@@ -26,22 +28,31 @@ export const parentStudentsApi = {
   getById: (id: string) =>
     fetchData<ParentStudentResponse>(`${BASE_PATH}/${id}`),
 
-  create: (body: ParentStudentCreateRequest) =>
-    mutateData<ParentStudentResponse>(BASE_PATH, {
+  create: (body: ParentStudentCreateRequest, auditReason?: string) =>
+    mutateData<MemberJoinRequestResponse>(BASE_PATH, {
       method: "POST",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 
-  update: (id: string, body: ParentStudentUpdateRequest) =>
+  update: (id: string, body: ParentStudentUpdateRequest, auditReason?: string) =>
     mutateData<ParentStudentResponse>(`${BASE_PATH}/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 
-  delete: async (id: string): Promise<void> => {
+  delete: async (id: string, auditReason?: string): Promise<void> => {
     await apiFetch<ApiResponse<void>>(`${BASE_PATH}/${id}`, {
       method: "DELETE",
       auth: true,
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     });
   },
 

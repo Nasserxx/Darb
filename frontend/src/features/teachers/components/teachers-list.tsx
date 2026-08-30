@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { DataTable } from "@/components/shared/data-table.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
+import { FormerMemberBadge } from "@/components/shared/former-member-badge.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
@@ -18,7 +20,7 @@ import type { TeacherResponse } from "../types/index.ts";
 
 export function TeachersList() {
   const { t } = useTranslation("app");
-  const { params, setPage } = usePagination();
+  const { params, setPage, setSize, setFilter } = usePagination();
   const { data, isLoading } = useTeachers(params);
   const deleteTeacher = useDeleteTeacher();
 
@@ -60,6 +62,16 @@ export function TeachersList() {
         }
       />
 
+      <SuperAdminMosqueScopeBar
+        mosqueId={params.mosqueId}
+        q={params.q}
+        nameFilter={{
+          label: t("superAdminScope.filterTeacherName"),
+          placeholder: t("superAdminScope.filterTeacherNamePlaceholder"),
+        }}
+        onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
+      />
+
       <DataTable
         columns={[
           {
@@ -89,11 +101,12 @@ export function TeachersList() {
           {
             id: "status",
             header: t("teachers.status"),
-            cell: (row) => (
-              <Badge variant={row.isActive ? "default" : "secondary"}>
-                {row.isActive ? t("teachers.active") : t("teachers.inactive")}
-              </Badge>
-            ),
+            cell: (row) =>
+              row.isActive ? (
+                <Badge variant="default">{t("teachers.active")}</Badge>
+              ) : (
+                <FormerMemberBadge />
+              ),
           },
           {
             id: "actions",
@@ -124,6 +137,8 @@ export function TeachersList() {
         data={data}
         isLoading={isLoading}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
       />
 
       <TeacherFormDialog

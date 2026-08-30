@@ -65,9 +65,11 @@ public class AchievementController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<AchievementResponse>>> findByStudent(
+            Authentication authentication,
             @Parameter(description = "Student UUID", required = true) @PathVariable UUID studentId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<AchievementResponse> page = achievementService.findByStudentId(studentId, pageable);
+        Page<AchievementResponse> page = achievementService.findByStudentId(
+                (UUID) authentication.getPrincipal(), studentId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<AchievementResponse>>builder()
                 .success(true)
                 .message("Student achievements retrieved successfully")
@@ -96,9 +98,11 @@ public class AchievementController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<AchievementResponse>>> findByMosque(
+            Authentication authentication,
             @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID mosqueId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<AchievementResponse> page = achievementService.findByMosqueId(mosqueId, pageable);
+        Page<AchievementResponse> page = achievementService.findByMosqueId(
+                (UUID) authentication.getPrincipal(), mosqueId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<AchievementResponse>>builder()
                 .success(true)
                 .message("Mosque achievements retrieved successfully")
@@ -133,7 +137,7 @@ public class AchievementController {
                 .body(ApiResponse.<AchievementResponse>builder()
                         .success(true)
                         .message("Achievement awarded successfully")
-                        .data(achievementService.create(request))
+                        .data(achievementService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 }

@@ -1,11 +1,15 @@
 import { z } from "zod";
 
-export const loginSchema = z.object({
-  email: z.email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
-});
+type AuthT = (key: string, options?: Record<string, unknown>) => string;
 
-export type LoginFormValues = z.infer<typeof loginSchema>;
+export function createLoginSchema(t: AuthT) {
+  return z.object({
+    email: z.email(t("validation.emailInvalid")),
+    password: z.string().min(1, t("validation.passwordRequired")),
+  });
+}
+
+export type LoginFormValues = z.infer<ReturnType<typeof createLoginSchema>>;
 
 export type LoginRequestBody = {
   email: string;

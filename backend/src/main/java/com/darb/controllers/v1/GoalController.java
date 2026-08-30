@@ -66,9 +66,11 @@ public class GoalController {
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<GoalResponse>>> findByStudent(
+            Authentication authentication,
             @Parameter(description = "Student UUID", required = true) @PathVariable UUID studentId,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<GoalResponse> page = goalService.findByStudentId(studentId, pageable);
+        Page<GoalResponse> page = goalService.findByStudentId(
+                (UUID) authentication.getPrincipal(), studentId, pageable);
         return ResponseEntity.ok(ApiResponse.<PageResponse<GoalResponse>>builder()
                 .success(true)
                 .message("Student goals retrieved successfully")
@@ -103,7 +105,7 @@ public class GoalController {
                 .body(ApiResponse.<GoalResponse>builder()
                         .success(true)
                         .message("Goal created successfully")
-                        .data(goalService.create(request))
+                        .data(goalService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }
 
@@ -121,12 +123,13 @@ public class GoalController {
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<GoalResponse>> update(
+            Authentication authentication,
             @Parameter(description = "Goal UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody GoalUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.<GoalResponse>builder()
                 .success(true)
                 .message("Goal updated successfully")
-                .data(goalService.update(id, request))
+                .data(goalService.update((UUID) authentication.getPrincipal(), id, request))
                 .build());
     }
 }

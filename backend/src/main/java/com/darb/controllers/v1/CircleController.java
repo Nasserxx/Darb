@@ -44,8 +44,11 @@ public class CircleController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<CircleResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<CircleResponse> page = circleService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<CircleResponse> page = circleService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<CircleResponse>>builder()
                 .success(true)
                 .message("Circles retrieved successfully")
@@ -144,8 +147,9 @@ public class CircleController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
             Authentication authentication,
-            @Parameter(description = "Circle UUID", required = true) @PathVariable UUID id) {
-        circleService.delete((UUID) authentication.getPrincipal(), id);
+            @Parameter(description = "Circle UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
+        circleService.delete((UUID) authentication.getPrincipal(), id, auditReasonHeader, null);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Circle deactivated successfully")

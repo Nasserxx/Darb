@@ -81,7 +81,7 @@ export function useCreateAttendance(
   options?: UseMutationOptions<
     AttendanceResponse,
     Error,
-    AttendanceCreateRequest
+    { body: AttendanceCreateRequest; auditReason?: string }
   >,
 ) {
   const queryClient = useQueryClient();
@@ -90,7 +90,8 @@ export function useCreateAttendance(
 
   return useMutation({
     ...options,
-    mutationFn: attendanceApi.create,
+    mutationFn: ({ body, auditReason }) =>
+      attendanceApi.create(body, auditReason),
     onSuccess: (...args) => {
       void queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
       return userOnSuccess?.(...args);
@@ -102,7 +103,7 @@ export function useUpdateAttendance(
   options?: UseMutationOptions<
     AttendanceResponse,
     Error,
-    { id: string; body: AttendanceUpdateRequest }
+    { id: string; body: AttendanceUpdateRequest; auditReason?: string }
   >,
 ) {
   const queryClient = useQueryClient();
@@ -111,7 +112,8 @@ export function useUpdateAttendance(
 
   return useMutation({
     ...options,
-    mutationFn: ({ id, body }) => attendanceApi.update(id, body),
+    mutationFn: ({ id, body, auditReason }) =>
+      attendanceApi.update(id, body, auditReason),
     onSuccess: (...args) => {
       const [, variables] = args;
       queryClient.setQueryData(attendanceKeys.detail(variables.id), args[0]);

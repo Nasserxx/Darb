@@ -154,13 +154,18 @@ export function AttendancePage() {
         id: "actions",
         header: "",
         className: "text-right",
-        cell: (row: CircleResponse) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/${localePrefix}/attendance/circle/${row.id}`}>
+        cell: (row: CircleResponse) =>
+          row.status === "ENDED" ? (
+            <Button variant="outline" size="sm" disabled>
               {t("attendance.markAttendance")}
-            </Link>
-          </Button>
-        ),
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/${localePrefix}/attendance/circle/${row.id}`}>
+                {t("attendance.markAttendance")}
+              </Link>
+            </Button>
+          ),
       },
     ];
   }, [canMark, localePrefix, t]);

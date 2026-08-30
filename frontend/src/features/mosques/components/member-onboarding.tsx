@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { mosquesApi } from "@/features/mosques/api/mosques-api.ts";
+import { CitySelect } from "@/features/mosques/components/city-select.tsx";
 import {
   mosqueJoinSchema,
   type MosqueJoinFormValues,
@@ -68,7 +69,7 @@ export function MemberOnboarding({
   const { refreshProfile } = useWorkspace();
   const [q, setQ] = useState("");
   const [country, setCountry] = useState<string | null>(null);
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [results, setResults] = useState<PageResponse<MosqueSearchResult> | null>(
     null,
@@ -195,7 +196,7 @@ export function MemberOnboarding({
       const data = await mosquesApi.search({
         q: q.trim(),
         country: country ?? undefined,
-        city: city.trim(),
+        city: city?.trim() || undefined,
         page: nextPage,
       });
       setResults(data);
@@ -234,7 +235,7 @@ export function MemberOnboarding({
   }
 
   const rows = results?.content ?? [];
-  const hasActiveFilters = Boolean(q.trim() || country || city.trim());
+  const hasActiveFilters = Boolean(q.trim() || country || city?.trim());
 
   return (
     <Card className="overflow-hidden border-border/80 shadow-sm">
@@ -338,7 +339,10 @@ export function MemberOnboarding({
                     <Combobox
                       options={countryOptions}
                       value={country}
-                      onValueChange={setCountry}
+                      onValueChange={(value) => {
+                        setCountry(value);
+                        setCity(null);
+                      }}
                       placeholder={t("mosques.allCountries")}
                     />
                   </Field>
@@ -346,10 +350,13 @@ export function MemberOnboarding({
                     <FieldLabel htmlFor="mosque-city-search">
                       {t("mosques.city")}
                     </FieldLabel>
-                    <Input
+                    <CitySelect
                       id="mosque-city-search"
+                      country={country}
                       value={city}
-                      onChange={(event) => setCity(event.target.value)}
+                      onValueChange={setCity}
+                      mode="filter"
+                      activeOnly
                       placeholder={t("onboarding.member.cityPlaceholder")}
                     />
                   </Field>
@@ -364,7 +371,7 @@ export function MemberOnboarding({
                       onClick={() => {
                         setQ("");
                         setCountry(null);
-                        setCity("");
+                        setCity(null);
                         void handleSearch(0);
                       }}
                     >

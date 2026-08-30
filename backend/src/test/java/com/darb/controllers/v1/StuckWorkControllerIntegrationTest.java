@@ -169,7 +169,146 @@ class StuckWorkControllerIntegrationTest extends PostgresIntegrationTestBase {
                 .toList();
         assertEquals(1, matches.size(), "expected exactly one pending join for " + mosqueName);
         assertEquals("PENDING_JOIN", matches.get(0).get("kind"));
+        assertEquals("MEMBER_REQUEST", matches.get(0).get("direction"));
         assertEquals(mosqueName, matches.get(0).get("mosqueName"));
         assertEquals(1, matches.get(0).get("densityScore"));
+        String summary = (String) matches.get(0).get("summary");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                summary != null && summary.contains("requested to join as"),
+                "expected MEMBER_REQUEST summary wording, got: " + summary);
+    }
+
+    @Test
+    void superAdmin_approveMemberRequest_withoutAudit_returns400() throws Exception {
+        String superAdminToken = createSuperAdmin("super-join-no-audit-" + UUID.randomUUID() + "@test.darb");
+        String adminEmail = "admin-join-no-audit-" + UUID.randomUUID() + "@test.darb";
+        registerRole(adminEmail, "mosque_admin");
+        String adminToken = login(adminEmail);
+        UUID mosqueId = onboardMosque(adminToken, "Join No Audit Mosque");
+        UUID requestId = createJoinRequestReturningId(
+                "teacher-no-audit-" + UUID.randomUUID() + "@test.darb", mosqueId);
+
+        mockMvc.perform(post("/api/v1/mosque-admins/join-requests/" + requestId + "/approve")
+                        .header("Authorization", "Bearer " + superAdminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void superAdmin_approveMemberRequest_withAudit_returns200() throws Exception {
+        String superAdminToken = createSuperAdmin("super-join-audit-" + UUID.randomUUID() + "@test.darb");
+        String adminEmail = "admin-join-audit-" + UUID.randomUUID() + "@test.darb";
+        registerRole(adminEmail, "mosque_admin");
+        String adminToken = login(adminEmail);
+        UUID mosqueId = onboardMosque(adminToken, "Join Audit Mosque");
+        UUID requestId = createJoinRequestReturningId(
+                "teacher-audit-" + UUID.randomUUID() + "@test.darb", mosqueId);
+
+        mockMvc.perform(post("/api/v1/mosque-admins/join-requests/" + requestId + "/approve")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .header("X-Audit-Reason", "QA force approve pending join"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"))
+                .andExpect(jsonPath("$.data.direction").value("MEMBER_REQUEST"));
+    }
+
+    @Test
+    void superAdmin_forceAcceptInvite_withAudit_returns200() throws Exception {
+        String superAdminToken = createSuperAdmin("super-force-accept-" + UUID.randomUUID() + "@test.darb");
+        String adminEmail = "admin-force-accept-" + UUID.randomUUID() + "@test.darb";
+        registerRole(adminEmail, "mosque_admin");
+        String adminToken = login(adminEmail);
+        UUID mosqueId = onboardMosque(adminToken, "Force Accept Mosque");
+
+        String teacherEmail = "invitee-force-" + UUID.randomUUID() + "@test.darb";
+        registerRole(teacherEmail, "teacher");
+        UUID teacherUserId = userRepository.findByEmail(teacherEmail).orElseThrow().getId();
+
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/teachers")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": "%s",
+                                  "mosqueId": "%s"
+                                }
+                                """.formatted(teacherUserId, mosqueId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.direction").value("ADMIN_INVITE"))
+                .andReturn();
+        UUID inviteId = UUID.fromString(com.jayway.jsonpath.JsonPath.read(
+                inviteResult.getResponse().getContentAsString(), "$.data.id"));
+
+        MvcResult stuckResult = mockMvc.perform(get("/api/v1/admin/stuck-work")
+                        .header("Authorization", "Bearer " + superAdminToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Map<String, Object>> stuckWorkData = com.jayway.jsonpath.JsonPath.read(
+                stuckResult.getResponse().getContentAsString(), "$.data");
+        Map<String, Object> inviteItem = stuckWorkData.stream()
+                .filter(item -> inviteId.toString().equals(item.get("resourceId")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("ADMIN_INVITE", inviteItem.get("direction"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                ((String) inviteItem.get("summary")).contains("invited as"));
+
+        mockMvc.perform(post("/api/v1/mosques/join-requests/" + inviteId + "/accept")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .header("X-Audit-Reason", "QA force accept invitee seat"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"))
+                .andExpect(jsonPath("$.data.direction").value("ADMIN_INVITE"));
+    }
+
+    @Test
+    void superAdmin_approveOnAdminInvite_returns400() throws Exception {
+        String superAdminToken = createSuperAdmin("super-wrong-verb-" + UUID.randomUUID() + "@test.darb");
+        String adminEmail = "admin-wrong-verb-" + UUID.randomUUID() + "@test.darb";
+        registerRole(adminEmail, "mosque_admin");
+        String adminToken = login(adminEmail);
+        UUID mosqueId = onboardMosque(adminToken, "Wrong Verb Mosque");
+
+        String teacherEmail = "invitee-wrong-" + UUID.randomUUID() + "@test.darb";
+        registerRole(teacherEmail, "teacher");
+        UUID teacherUserId = userRepository.findByEmail(teacherEmail).orElseThrow().getId();
+
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/teachers")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": "%s",
+                                  "mosqueId": "%s"
+                                }
+                                """.formatted(teacherUserId, mosqueId)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID inviteId = UUID.fromString(com.jayway.jsonpath.JsonPath.read(
+                inviteResult.getResponse().getContentAsString(), "$.data.id"));
+
+        mockMvc.perform(post("/api/v1/mosque-admins/join-requests/" + inviteId + "/approve")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .header("X-Audit-Reason", "QA wrong direction verb"))
+                .andExpect(status().isBadRequest());
+    }
+
+    private UUID createJoinRequestReturningId(String teacherEmail, UUID mosqueId) throws Exception {
+        registerRole(teacherEmail, "teacher");
+        String teacherToken = login(teacherEmail);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/mosques/join-requests")
+                        .header("Authorization", "Bearer " + teacherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mosqueId": "%s"
+                                }
+                                """.formatted(mosqueId)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return UUID.fromString(com.jayway.jsonpath.JsonPath.read(
+                result.getResponse().getContentAsString(), "$.data.id"));
     }
 }

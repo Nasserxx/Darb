@@ -2,6 +2,8 @@ package com.darb.controllers.v1;
 
 import com.darb.entities.User;
 import com.darb.entities.enums.UserRole;
+import com.darb.repositories.StudentRepository;
+import com.darb.repositories.ParentStudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.support.PostgresIntegrationTestBase;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,12 @@ class MosqueListFilterIntegrationTest extends PostgresIntegrationTestBase {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private ParentStudentRepository parentStudentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -361,27 +369,15 @@ class MosqueListFilterIntegrationTest extends PostgresIntegrationTestBase {
 
     private void deactivateMosque(String superAdminToken, String mosqueId) throws Exception {
         mockMvc.perform(delete("/api/v1/mosques/" + mosqueId)
-                        .header("Authorization", "Bearer " + superAdminToken))
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .header("X-Audit-Reason", "Test deactivate mosque for list filter coverage"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
 
     private String createStudent(String adminToken, String userId, String mosqueId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/students")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "userId": "%s",
-                                  "mosqueId": "%s"
-                                }
-                                """.formatted(userId, mosqueId)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return com.jayway.jsonpath.JsonPath.read(
-                result.getResponse().getContentAsString(),
-                "$.data.id");
+        return com.darb.support.MembershipFixtures.seatStudent(
+                mockMvc, userRepository, studentRepository, adminToken, userId, mosqueId, PASSWORD);
     }
 
     private String createParentStudentLink(String adminToken, String parentUserId, String studentId) throws Exception {
@@ -398,9 +394,17 @@ class MosqueListFilterIntegrationTest extends PostgresIntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        return com.jayway.jsonpath.JsonPath.read(
+        String requestId = com.jayway.jsonpath.JsonPath.read(
                 result.getResponse().getContentAsString(),
                 "$.data.id");
+        var parent = userRepository.findById(java.util.UUID.fromString(parentUserId)).orElseThrow();
+        com.darb.support.MembershipFixtures.acceptParentInvite(mockMvc, parent.getEmail(), PASSWORD, requestId);
+        return parentStudentRepository.findByParentId(parent.getId()).stream()
+                .filter(link -> link.getStudent().getId().toString().equals(studentId))
+                .findFirst()
+                .orElseThrow()
+                .getId()
+                .toString();
     }
 
     private List<String> fetchNames(String authToken, String... queryParams) throws Exception {

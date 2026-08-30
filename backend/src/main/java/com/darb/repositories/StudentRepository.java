@@ -19,4 +19,8 @@ public interface StudentRepository extends JpaRepository<Student, UUID>, JpaSpec
     List<Student> findByStatusNot(EnrollmentStatus status);
 
     java.util.Optional<Student> findByParentInviteCode(String parentInviteCode);
+
+    boolean existsByUserIdAndMosqueId(UUID userId, UUID mosqueId);
+    boolean existsByUserIdAndMosqueIdAndStatus(UUID userId, UUID mosqueId, EnrollmentStatus status);
+    List<Student> findByUserIdAndStatus(UUID userId, EnrollmentStatus status);
 }

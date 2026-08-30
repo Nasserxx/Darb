@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { PageParams } from "@/lib/types/api.ts";
 
 import { usersApi } from "../api/users-api.ts";
-import type { UserUpdateRequest } from "../types/index.ts";
+import type { UserPickerParams, UserUpdateRequest } from "../types/index.ts";
 import { userKeys } from "./query-keys.ts";
 
 const USER_SEARCH_DEBOUNCE_MS = 300;
@@ -39,6 +39,47 @@ export function useUserSearch(query: string, options?: { enabled?: boolean }) {
       usersApi.search({ q: trimmed, page: 0, size: USER_SEARCH_PAGE_SIZE }),
     enabled: (options?.enabled ?? true) && trimmed.length > 0,
     staleTime: 30_000,
+  });
+}
+
+export function useUserPicker(
+  params: UserPickerParams,
+  options?: { enabled?: boolean },
+) {
+  const hasCriterion = Boolean(
+    (params.q && params.q.trim().length >= 2) ||
+      params.country ||
+      params.dateOfBirth,
+  );
+  return useQuery({
+    queryKey: userKeys.picker(params),
+    queryFn: () => usersApi.picker(params),
+    enabled: (options?.enabled ?? true) && hasCriterion,
+    staleTime: 30_000,
+  });
+}
+
+export function usePickerStates(country: string | undefined) {
+  const trimmed = country?.trim();
+  return useQuery({
+    queryKey: userKeys.pickerStates(trimmed ?? ""),
+    queryFn: () => usersApi.pickerStates(trimmed!),
+    enabled: Boolean(trimmed),
+    staleTime: 60_000,
+  });
+}
+
+export function usePickerCities(
+  country: string | undefined,
+  state: string | undefined,
+) {
+  const trimmedCountry = country?.trim();
+  const trimmedState = state?.trim();
+  return useQuery({
+    queryKey: userKeys.pickerCities(trimmedCountry ?? "", trimmedState),
+    queryFn: () => usersApi.pickerCities(trimmedCountry!, trimmedState),
+    enabled: Boolean(trimmedCountry),
+    staleTime: 60_000,
   });
 }
 

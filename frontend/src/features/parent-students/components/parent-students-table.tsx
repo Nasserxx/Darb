@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { DataTable } from "@/components/shared/data-table.tsx";
+import { SuperAdminAuditReasonDialog } from "@/components/shared/super-admin-audit-reason-dialog.tsx";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { ParentStudentFormDialog } from "@/features/parent-students/components/parent-student-form-dialog.tsx";
 import {
   useDeleteParentStudent,
@@ -15,20 +17,26 @@ import type { ParentStudentResponse } from "@/features/parent-students/types/ind
 import { formatShortId } from "@/lib/format/ids.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
+import { hasRole } from "@/lib/navigation/role-permissions.ts";
 
 export function ParentStudentsTable() {
   const { t } = useTranslation("app");
-  const { params, setPage } = usePagination();
+  const { user } = useAuth();
+  const isSuperAdmin = hasRole(user?.role, ["SUPER_ADMIN"]);
+  const { params, setPage, setSize, setFilter } = usePagination();
   const { data, isLoading } = useParentStudents(params);
   const deleteMutation = useDeleteParentStudent();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ParentStudentResponse | null>(null);
   const [deleting, setDeleting] = useState<ParentStudentResponse | null>(null);
 
-  async function handleDelete() {
+  async function handleDelete(auditReason?: string) {
     if (!deleting) return;
     try {
-      await deleteMutation.mutateAsync(deleting.id);
+      await deleteMutation.mutateAsync({
+        id: deleting.id,
+        auditReason,
+      });
       toast.success(t("parentStudents.deleteSuccess"));
       setDeleting(null);
     } catch (error) {
@@ -38,10 +46,21 @@ export function ParentStudentsTable() {
 
   return (
     <>
+      <SuperAdminMosqueScopeBar
+        mosqueId={params.mosqueId}
+        q={params.q}
+        nameFilter={{
+          label: t("superAdminScope.filterParentName"),
+          placeholder: t("superAdminScope.filterParentNamePlaceholder"),
+        }}
+        onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
+      />
       <DataTable
         data={data}
         isLoading={isLoading}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
         columns={[
           {
             id: "parent",
@@ -56,7 +75,10 @@ export function ParentStudentsTable() {
           {
             id: "relationship",
             header: t("parentStudents.relationship"),
-            cell: (row) => row.relationship ?? "—",
+            cell: (row) =>
+              row.relationship
+                ? t(`enums.parentRelationship.${row.relationship}`)
+                : "—",
           },
           {
             id: "isPrimary",
@@ -92,14 +114,16 @@ export function ParentStudentsTable() {
                 >
                   {t("actions.edit")}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive"
-                  onClick={() => setDeleting(row)}
-                >
-                  {t("actions.delete")}
-                </Button>
+                {isSuperAdmin ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => setDeleting(row)}
+                  >
+                    {t("actions.delete")}
+                  </Button>
+                ) : null}
               </div>
             ),
           },
@@ -113,14 +137,19 @@ export function ParentStudentsTable() {
         }}
         link={editing}
       />
-      <ConfirmDeleteDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-        onConfirm={() => void handleDelete()}
-        isPending={deleteMutation.isPending}
-      />
+      {isSuperAdmin ? (
+        <SuperAdminAuditReasonDialog
+          open={Boolean(deleting)}
+          onOpenChange={(open) => {
+            if (!open) setDeleting(null);
+          }}
+          title={t("parentStudents.deleteTitle")}
+          description={t("parentStudents.deletePermanentDescription")}
+          confirmLabel={t("confirmDelete.confirm")}
+          isPending={deleteMutation.isPending}
+          onConfirm={(reason) => void handleDelete(reason)}
+        />
+      ) : null}
     </>
   );
 }

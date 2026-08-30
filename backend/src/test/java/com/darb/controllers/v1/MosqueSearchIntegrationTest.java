@@ -197,7 +197,7 @@ class MosqueSearchIntegrationTest extends PostgresIntegrationTestBase {
     }
 
     @Test
-    void search_withPendingJoinRequest_returns403() throws Exception {
+    void search_withPendingJoinRequest_stillSucceeds() throws Exception {
         String teacherEmail = "teacher-pending-search-" + UUID.randomUUID() + "@test.darb";
         registerRole(teacherEmail, "teacher");
         String teacherToken = login(teacherEmail);
@@ -216,8 +216,8 @@ class MosqueSearchIntegrationTest extends PostgresIntegrationTestBase {
 
         mockMvc.perform(get("/api/v1/mosques/search")
                         .header("Authorization", "Bearer " + teacherToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
@@ -354,7 +354,8 @@ class MosqueSearchIntegrationTest extends PostgresIntegrationTestBase {
 
     private void deactivateMosque(String superAdminToken, String mosqueId) throws Exception {
         mockMvc.perform(delete("/api/v1/mosques/" + mosqueId)
-                        .header("Authorization", "Bearer " + superAdminToken))
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .header("X-Audit-Reason", "Test deactivate mosque for search coverage"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

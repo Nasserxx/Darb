@@ -1,12 +1,16 @@
 package com.darb.services;
 
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.dtos.student.StudentCreateRequest;
+import com.darb.dtos.student.StudentProvisionRequest;
 import com.darb.dtos.student.StudentResponse;
 import com.darb.dtos.student.StudentUpdateRequest;
+import com.darb.dtos.user.UserCreateRequest;
 import com.darb.entities.Mosque;
 import com.darb.entities.Student;
 import com.darb.entities.User;
 import com.darb.entities.enums.EnrollmentStatus;
+import com.darb.entities.enums.JoinRequestStatus;
 import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
@@ -15,17 +19,20 @@ import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
-import com.darb.entities.enums.JoinRequestStatus;
+import com.darb.util.NameFilterSpecs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -42,15 +49,32 @@ public class StudentService {
     private final MosqueRepository mosqueRepository;
     private final MosqueMemberJoinRequestRepository joinRequestRepository;
     private final MosqueAccessService mosqueAccessService;
+    private final UserService userService;
+    private final ObjectProvider<MosqueMemberJoinRequestService> joinRequestService;
 
     @Transactional(readOnly = true)
-    public Page<StudentResponse> findAll(UUID callerId, Pageable pageable) {
-        return mosqueAccessService.pageForCaller(
-                callerId,
-                pageable,
-                mosqueId -> studentRepository.findByMosqueId(mosqueId, pageable),
-                studentRepository::findAll
-        ).map(this::toResponse);
+    public Page<StudentResponse> findAll(UUID callerId, Pageable pageable, UUID mosqueIdFilter, String q) {
+        User caller = userRepository.findById(callerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", callerId));
+        if (caller.getRole() == UserRole.STUDENT) {
+            List<Student> mine = studentRepository.findByUserId(callerId);
+            return new org.springframework.data.domain.PageImpl<>(
+                    mine.stream().map(this::toResponse).toList(),
+                    pageable,
+                    mine.size());
+        }
+
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueIdFilter, q);
+        if (mosqueAccessService.shouldReturnEmptyListPage(callerId)) {
+            return Page.empty(pageable);
+        }
+        UUID mosqueId = mosqueAccessService.resolveEffectiveMosqueIdForList(callerId, mosqueIdFilter);
+        Specification<Student> spec = (root, query, cb) -> cb.conjunction();
+        if (mosqueId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("mosque").get("id"), mosqueId));
+        }
+        spec = NameFilterSpecs.and(spec, NameFilterSpecs.userJoinFullNameLike("user", q));
+        return studentRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -68,36 +92,38 @@ public class StudentService {
     }
 
     @Transactional
-    public StudentResponse create(UUID callerId, StudentCreateRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
-        Mosque mosque = mosqueRepository.findById(request.getMosqueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
-        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
+    public MemberJoinRequestResponse create(UUID callerId, StudentCreateRequest request) {
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
+        return joinRequestService.getObject().invite(
+                callerId, request.getUserId(), mosqueId, UserRole.STUDENT, null, null);
+    }
 
-        if (request.getFullName() != null) {
-            user.setFullName(request.getFullName());
-        }
-
-        String parentInviteCode = request.getParentInviteCode();
-        if (parentInviteCode == null || parentInviteCode.isBlank()) {
-            parentInviteCode = generateParentInviteCode();
-        }
-
-        Student student = Student.builder()
-                .user(user)
-                .mosque(mosque)
-                .nationalId(request.getNationalId())
-                .medicalNotes(request.getMedicalNotes())
-                .memorizedJuz(request.getMemorizedJuz())
-                .parentInviteCode(parentInviteCode)
-                .totalAbsences(0)
-                .totalLateArrivals(0)
-                .status(EnrollmentStatus.ACTIVE)
-                .enrolledAt(Instant.now())
-                .build();
-
-        return toResponse(studentRepository.save(student));
+    @Transactional
+    public StudentResponse provision(UUID callerId, StudentProvisionRequest request) {
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
+        UserCreateRequest userRequest = new UserCreateRequest();
+        userRequest.setFullName(request.getFullName());
+        userRequest.setEmail(request.getEmail());
+        userRequest.setPassword(request.getPassword());
+        userRequest.setPhone(request.getPhone());
+        userRequest.setRole(UserRole.STUDENT);
+        userRequest.setGender(request.getGender());
+        userRequest.setDateOfBirth(request.getDateOfBirth());
+        userRequest.setCity(request.getCity());
+        userRequest.setAddressCountry(request.getAddressCountry());
+        userRequest.setAddressPostalCode(request.getAddressPostalCode());
+        userRequest.setAddressStreet(request.getAddressStreet());
+        userRequest.setAddressHouseNumber(request.getAddressHouseNumber());
+        userRequest.setAddressState(request.getAddressState());
+        UUID userId = userService.create(userRequest).getId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        StudentResponse response = attachSeat(
+                user, mosque, request.getMedicalNotes(), request.getMemorizedJuz(), generateParentInviteCode());
+        log.info("Provisioned user {} mosque {} role STUDENT", userId, mosque.getId());
+        return response;
     }
 
     @Transactional
@@ -106,12 +132,6 @@ public class StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         if (user.getRole() != UserRole.STUDENT) {
             throw new ForbiddenException("Only students can use this endpoint");
-        }
-        if (!studentRepository.findByUserId(userId).isEmpty()) {
-            throw new ForbiddenException("You already have a student profile");
-        }
-        if (joinRequestRepository.existsByUserIdAndStatus(userId, JoinRequestStatus.PENDING)) {
-            throw new ForbiddenException("You already have a pending join request");
         }
 
         String normalizedCode = inviteCode == null ? "" : inviteCode.trim();
@@ -132,21 +152,58 @@ public class StudentService {
         if (user.getRole() != UserRole.STUDENT) {
             throw new ForbiddenException("Only students can use this endpoint");
         }
-        if (!studentRepository.findByUserId(userId).isEmpty()) {
-            throw new ForbiddenException("You already have a student profile");
-        }
         Mosque mosque = mosqueRepository.findById(mosqueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        if (studentRepository.existsByUserIdAndMosqueIdAndStatus(
+                userId, mosqueId, EnrollmentStatus.ACTIVE)) {
+            throw new ForbiddenException("You already have a student profile at this mosque");
+        }
+        if (joinRequestRepository.existsByUserIdAndMosqueIdAndRequestedRoleAndStatus(
+                userId, mosqueId, UserRole.STUDENT, JoinRequestStatus.PENDING)) {
+            throw new ForbiddenException("You already have a pending join request");
+        }
+        return attachSeat(user, mosque, null, null, generateParentInviteCode());
+    }
 
+    public StudentResponse completeApprovedJoin(UUID userId, UUID mosqueId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        if (studentRepository.existsByUserIdAndMosqueIdAndStatus(
+                userId, mosqueId, EnrollmentStatus.ACTIVE)) {
+            throw new ForbiddenException("You already have a student profile at this mosque");
+        }
+        return attachSeat(user, mosque, null, null, generateParentInviteCode());
+    }
+
+    private StudentResponse attachSeat(
+            User user, Mosque mosque, String medicalNotes, Integer memorizedJuz, String parentInviteCode) {
+        Student existing = studentRepository.findByUserId(user.getId()).stream()
+                .filter(s -> s.getMosque().getId().equals(mosque.getId()))
+                .findFirst()
+                .orElse(null);
+        if (existing != null) {
+            existing.setMedicalNotes(medicalNotes);
+            existing.setMemorizedJuz(memorizedJuz);
+            if (parentInviteCode != null) {
+                existing.setParentInviteCode(parentInviteCode);
+            }
+            existing.setStatus(EnrollmentStatus.ACTIVE);
+            existing.setEnrolledAt(Instant.now());
+            return toResponse(studentRepository.save(existing));
+        }
         Student student = Student.builder()
                 .user(user)
                 .mosque(mosque)
+                .medicalNotes(medicalNotes)
+                .memorizedJuz(memorizedJuz)
+                .parentInviteCode(parentInviteCode)
                 .totalAbsences(0)
                 .totalLateArrivals(0)
                 .status(EnrollmentStatus.ACTIVE)
                 .enrolledAt(Instant.now())
                 .build();
-
         return toResponse(studentRepository.save(student));
     }
 
@@ -155,9 +212,6 @@ public class StudentService {
         Student student = findEntityOrThrow(id);
         mosqueAccessService.assertCanAccessStudent(callerId, student);
 
-        if (request.getNationalId() != null) {
-            student.setNationalId(request.getNationalId());
-        }
         if (request.getMedicalNotes() != null) {
             student.setMedicalNotes(request.getMedicalNotes());
         }
@@ -208,7 +262,6 @@ public class StudentService {
                 .fullName(student.getUser().getFullName())
                 .mosqueId(student.getMosque().getId())
                 .mosqueName(student.getMosque().getName())
-                .nationalId(student.getNationalId())
                 .medicalNotes(student.getMedicalNotes())
                 .memorizedJuz(student.getMemorizedJuz())
                 .totalAbsences(student.getTotalAbsences())

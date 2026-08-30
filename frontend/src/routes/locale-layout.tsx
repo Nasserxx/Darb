@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 
 import {
-  DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
   persistLocale,
+  preferredLocale,
   type Locale,
 } from "../i18n/index.ts";
 
@@ -29,7 +29,7 @@ export function LocaleLayout() {
     const pathSuffix =
       location.pathname.replace(/^\/[^/]+/, "") || "/login";
     return (
-      <Navigate to={`/${DEFAULT_LOCALE}${pathSuffix}`} replace />
+      <Navigate to={`/${preferredLocale()}${pathSuffix}`} replace />
     );
   }
 

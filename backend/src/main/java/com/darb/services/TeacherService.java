@@ -1,11 +1,15 @@
 package com.darb.services;
 
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.dtos.teacher.TeacherCreateRequest;
+import com.darb.dtos.teacher.TeacherProvisionRequest;
 import com.darb.dtos.teacher.TeacherResponse;
 import com.darb.dtos.teacher.TeacherUpdateRequest;
+import com.darb.dtos.user.UserCreateRequest;
 import com.darb.entities.Mosque;
 import com.darb.entities.Teacher;
 import com.darb.entities.User;
+import com.darb.entities.enums.JoinRequestStatus;
 import com.darb.entities.enums.UserRole;
 import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
@@ -14,11 +18,13 @@ import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.TeacherRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
-import com.darb.entities.enums.JoinRequestStatus;
+import com.darb.util.NameFilterSpecs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,15 +41,22 @@ public class TeacherService {
     private final MosqueRepository mosqueRepository;
     private final MosqueMemberJoinRequestRepository joinRequestRepository;
     private final MosqueAccessService mosqueAccessService;
+    private final UserService userService;
+    private final ObjectProvider<MosqueMemberJoinRequestService> joinRequestService;
 
     @Transactional(readOnly = true)
-    public Page<TeacherResponse> findAll(UUID callerId, Pageable pageable) {
-        return mosqueAccessService.pageForCaller(
-                callerId,
-                pageable,
-                mosqueId -> teacherRepository.findByMosqueId(mosqueId, pageable),
-                teacherRepository::findAll
-        ).map(this::toResponse);
+    public Page<TeacherResponse> findAll(UUID callerId, Pageable pageable, UUID mosqueIdFilter, String q) {
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueIdFilter, q);
+        if (mosqueAccessService.shouldReturnEmptyListPage(callerId)) {
+            return Page.empty(pageable);
+        }
+        UUID mosqueId = mosqueAccessService.resolveEffectiveMosqueIdForList(callerId, mosqueIdFilter);
+        Specification<Teacher> spec = (root, query, cb) -> cb.conjunction();
+        if (mosqueId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("mosque").get("id"), mosqueId));
+        }
+        spec = NameFilterSpecs.and(spec, NameFilterSpecs.userJoinFullNameLike("user", q));
+        return teacherRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -54,26 +67,39 @@ public class TeacherService {
     }
 
     @Transactional
-    public TeacherResponse create(UUID callerId, TeacherCreateRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
-        Mosque mosque = mosqueRepository.findById(request.getMosqueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
-        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
+    public MemberJoinRequestResponse create(UUID callerId, TeacherCreateRequest request) {
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
+        return joinRequestService.getObject().invite(
+                callerId, request.getUserId(), mosqueId, UserRole.TEACHER, null, null);
+    }
 
-        Teacher teacher = Teacher.builder()
-                .user(user)
-                .mosque(mosque)
-                .specialization(request.getSpecialization())
-                .bio(request.getBio())
-                .yearsExperience(request.getYearsExperience())
-                .ijazahChain(request.getIjazahChain())
-                .isAvailable(true)
-                .isActive(true)
-                .joinedAt(Instant.now())
-                .build();
-
-        return toResponse(teacherRepository.save(teacher));
+    @Transactional
+    public TeacherResponse provision(UUID callerId, TeacherProvisionRequest request) {
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
+        UserCreateRequest userRequest = new UserCreateRequest();
+        userRequest.setFullName(request.getFullName());
+        userRequest.setEmail(request.getEmail());
+        userRequest.setPassword(request.getPassword());
+        userRequest.setPhone(request.getPhone());
+        userRequest.setRole(UserRole.TEACHER);
+        userRequest.setGender(request.getGender());
+        userRequest.setDateOfBirth(request.getDateOfBirth());
+        userRequest.setCity(request.getCity());
+        userRequest.setAddressCountry(request.getAddressCountry());
+        userRequest.setAddressPostalCode(request.getAddressPostalCode());
+        userRequest.setAddressStreet(request.getAddressStreet());
+        userRequest.setAddressHouseNumber(request.getAddressHouseNumber());
+        userRequest.setAddressState(request.getAddressState());
+        UUID userId = userService.create(userRequest).getId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        TeacherResponse response = attachSeat(
+                user, mosque, request.getSpecialization(), request.getBio(),
+                request.getYearsExperience(), request.getIjazahChain());
+        log.info("Provisioned user {} mosque {} role TEACHER", userId, mosque.getId());
+        return response;
     }
 
     @Transactional
@@ -82,12 +108,6 @@ public class TeacherService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         if (user.getRole() != UserRole.TEACHER) {
             throw new ForbiddenException("Only teachers can use this endpoint");
-        }
-        if (!teacherRepository.findByUserId(userId).isEmpty()) {
-            throw new ForbiddenException("You already have a teacher profile");
-        }
-        if (joinRequestRepository.existsByUserIdAndStatus(userId, JoinRequestStatus.PENDING)) {
-            throw new ForbiddenException("You already have a pending join request");
         }
 
         String normalizedCode = inviteCode == null ? "" : inviteCode.trim();
@@ -108,20 +128,61 @@ public class TeacherService {
         if (user.getRole() != UserRole.TEACHER) {
             throw new ForbiddenException("Only teachers can use this endpoint");
         }
-        if (!teacherRepository.findByUserId(userId).isEmpty()) {
-            throw new ForbiddenException("You already have a teacher profile");
-        }
         Mosque mosque = mosqueRepository.findById(mosqueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        if (teacherRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(userId, mosqueId)) {
+            throw new ForbiddenException("You already have a teacher profile at this mosque");
+        }
+        if (joinRequestRepository.existsByUserIdAndMosqueIdAndRequestedRoleAndStatus(
+                userId, mosqueId, UserRole.TEACHER, JoinRequestStatus.PENDING)) {
+            throw new ForbiddenException("You already have a pending join request");
+        }
+        return attachSeat(user, mosque, null, null, null, null);
+    }
 
+    public TeacherResponse completeApprovedJoin(UUID userId, UUID mosqueId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
+        if (teacherRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(userId, mosqueId)) {
+            throw new ForbiddenException("You already have a teacher profile at this mosque");
+        }
+        return attachSeat(user, mosque, null, null, null, null);
+    }
+
+    private TeacherResponse attachSeat(
+            User user,
+            Mosque mosque,
+            String specialization,
+            String bio,
+            Integer yearsExperience,
+            String ijazahChain) {
+        Teacher existing = teacherRepository.findByUserId(user.getId()).stream()
+                .filter(t -> t.getMosque().getId().equals(mosque.getId()))
+                .findFirst()
+                .orElse(null);
+        if (existing != null) {
+            existing.setSpecialization(specialization);
+            existing.setBio(bio);
+            existing.setYearsExperience(yearsExperience);
+            existing.setIjazahChain(ijazahChain);
+            existing.setIsAvailable(true);
+            existing.setIsActive(true);
+            existing.setJoinedAt(Instant.now());
+            return toResponse(teacherRepository.save(existing));
+        }
         Teacher teacher = Teacher.builder()
                 .user(user)
                 .mosque(mosque)
+                .specialization(specialization)
+                .bio(bio)
+                .yearsExperience(yearsExperience)
+                .ijazahChain(ijazahChain)
                 .isAvailable(true)
                 .isActive(true)
                 .joinedAt(Instant.now())
                 .build();
-
         return toResponse(teacherRepository.save(teacher));
     }
 

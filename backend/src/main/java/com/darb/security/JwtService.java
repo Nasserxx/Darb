@@ -53,7 +53,9 @@ public class JwtService {
 
     private String buildToken(UUID userId, String email, String role, String tokenType, long expiration) {
         Instant now = Instant.now();
+        // ponytail: unique jti so re-login in the same millisecond does not collide on refresh_token_hashes.token_hash
         var builder = Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(userId.toString())
                 .claim("email", email)
                 .claim("token_type", tokenType)

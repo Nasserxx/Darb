@@ -5,14 +5,7 @@ import com.darb.dtos.common.PageResponse;
 import com.darb.dtos.memorization.MemorizationProgressCreateRequest;
 import com.darb.dtos.memorization.MemorizationProgressResponse;
 import com.darb.dtos.memorization.MemorizationProgressUpdateRequest;
-import com.darb.security.MosqueAccessService;
 import com.darb.services.MemorizationProgressService;
-import com.darb.services.StudentService;
-import com.darb.entities.Student;
-import com.darb.entities.enums.EnrollmentStatus;
-import com.darb.exceptions.BadRequestException;
-import com.darb.exceptions.ResourceNotFoundException;
-import com.darb.repositories.EnrollmentRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,11 +30,9 @@ import java.util.UUID;
 public class MemorizationProgressController {
 
     private final MemorizationProgressService memorizationProgressService;
-    private final MosqueAccessService mosqueAccessService;
-    private final StudentService studentService;
-    private final EnrollmentRepository enrollmentRepository;
 
-    @GetMapping("/{id}")
+    // ponytail: UUID pattern so paths like /progress are not coerced as /{id}
+    @GetMapping("/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}")
     @Operation(
             summary = "Get memorization progress by ID",
             description = "Retrieves a specific memorization progress record by its unique identifier."
@@ -140,17 +131,16 @@ public class MemorizationProgressController {
     public ResponseEntity<ApiResponse<MemorizationProgressResponse>> create(
             Authentication authentication,
             @Valid @RequestBody MemorizationProgressCreateRequest request) {
-        UUID actorUserId = (UUID) authentication.getPrincipal();
-        mosqueAccessService.assertCanAccessStudent(actorUserId, request.getStudentId());
+        UUID callerId = (UUID) authentication.getPrincipal();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<MemorizationProgressResponse>builder()
                         .success(true)
                         .message("Memorization progress recorded successfully")
-                        .data(memorizationProgressService.create(request))
+                        .data(memorizationProgressService.create(callerId, request))
                         .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}")
     @Operation(
             summary = "Update memorization progress",
             description = "Updates an existing memorization progress record's grade, tajweed score, or teacher notes. Accessible by SUPER_ADMIN, MOSQUE_ADMIN, and TEACHER."
@@ -176,24 +166,19 @@ public class MemorizationProgressController {
 
     @PostMapping("/me")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Self-report memorization progress", description = "Allows a student to log their own memorization progress.")
+    @Operation(
+            summary = "Self-report memorization progress",
+            description = "Student logs own progress. studentId is taken from the token; "
+                    + "teacher is resolved from the circle. Grade/tajweed/notes are ignored.")
     public ResponseEntity<ApiResponse<MemorizationProgressResponse>> createMyProgress(
-            @Valid @RequestBody MemorizationProgressCreateRequest request,
+            @RequestBody MemorizationProgressCreateRequest request,
             Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
-        Student student = studentService.findByUserId(userId);
-        request.setStudentId(student.getId());
-
-        // Verify active enrollment before allowing self-report
-        enrollmentRepository.findByStudentIdAndCircleId(student.getId(), request.getCircleId())
-                .filter(e -> e.getStatus() == EnrollmentStatus.ACTIVE)
-                .orElseThrow(() -> new BadRequestException("No active enrollment found for this circle"));
-
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.<MemorizationProgressResponse>builder()
                         .success(true)
                         .message("Progress recorded")
-                        .data(memorizationProgressService.create(request))
+                        .data(memorizationProgressService.createMyProgress(userId, request))
                         .build());
     }
 }

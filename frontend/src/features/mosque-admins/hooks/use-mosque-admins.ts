@@ -28,8 +28,13 @@ export function useCreateMosqueAdmin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: MosqueAdminCreateRequest) =>
-      mosqueAdminsApi.create(body),
+    mutationFn: ({
+      body,
+      auditReason,
+    }: {
+      body: MosqueAdminCreateRequest;
+      auditReason?: string;
+    }) => mosqueAdminsApi.create(body, auditReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: mosqueAdminKeys.lists() });
     },
@@ -43,10 +48,12 @@ export function useUpdateMosqueAdmin() {
     mutationFn: ({
       id,
       body,
+      auditReason,
     }: {
       id: string;
       body: MosqueAdminUpdateRequest;
-    }) => mosqueAdminsApi.update(id, body),
+      auditReason?: string;
+    }) => mosqueAdminsApi.update(id, body, auditReason),
     onSuccess: (_data, { id }) => {
       void queryClient.invalidateQueries({ queryKey: mosqueAdminKeys.lists() });
       void queryClient.invalidateQueries({
@@ -60,7 +67,13 @@ export function useDeleteMosqueAdmin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => mosqueAdminsApi.delete(id),
+    mutationFn: ({
+      id,
+      auditReason,
+    }: {
+      id: string;
+      auditReason?: string;
+    }) => mosqueAdminsApi.delete(id, auditReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: mosqueAdminKeys.lists() });
     },

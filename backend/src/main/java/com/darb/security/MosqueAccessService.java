@@ -3,9 +3,13 @@ package com.darb.security;
 import com.darb.entities.ParentStudent;
 import com.darb.entities.Student;
 import com.darb.entities.Teacher;
+import com.darb.entities.enums.EnrollmentStatus;
 import com.darb.entities.enums.UserRole;
+import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
+import com.darb.util.NameFilterSpecs;
+import org.springframework.util.StringUtils;
 import com.darb.repositories.MosqueAdminRepository;
 import com.darb.repositories.ParentStudentRepository;
 import com.darb.repositories.StudentRepository;
@@ -32,15 +36,15 @@ public class MosqueAccessService {
     public UUID resolveCallerMosqueId(UUID userId, UserRole role) {
         return switch (role) {
             case SUPER_ADMIN, PARENT -> null;
-            case MOSQUE_ADMIN -> mosqueAdminRepository.findByUserId(userId).stream()
+            case MOSQUE_ADMIN -> mosqueAdminRepository.findByUserIdAndIsActiveTrue(userId).stream()
                     .findFirst()
                     .map(admin -> admin.getMosque().getId())
                     .orElse(null);
-            case TEACHER -> teacherRepository.findByUserId(userId).stream()
+            case TEACHER -> teacherRepository.findByUserIdAndIsActiveTrue(userId).stream()
                     .findFirst()
                     .map(teacher -> teacher.getMosque().getId())
                     .orElse(null);
-            case STUDENT -> studentRepository.findByUserId(userId).stream()
+            case STUDENT -> studentRepository.findByUserIdAndStatus(userId, EnrollmentStatus.ACTIVE).stream()
                     .findFirst()
                     .map(student -> student.getMosque().getId())
                     .orElse(null);
@@ -52,10 +56,26 @@ public class MosqueAccessService {
         if (role == UserRole.SUPER_ADMIN) {
             return;
         }
-        UUID callerMosqueId = resolveCallerMosqueId(callerId, role);
-        if (callerMosqueId == null || !callerMosqueId.equals(mosqueId)) {
-            throw new ForbiddenException("Access denied to this mosque");
+        if (role == UserRole.TEACHER) {
+            if (!teacherRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(callerId, mosqueId)) {
+                throw new ForbiddenException("Access denied to this mosque");
+            }
+            return;
         }
+        if (role == UserRole.STUDENT) {
+            if (!studentRepository.existsByUserIdAndMosqueIdAndStatus(
+                    callerId, mosqueId, EnrollmentStatus.ACTIVE)) {
+                throw new ForbiddenException("Access denied to this mosque");
+            }
+            return;
+        }
+        if (role == UserRole.MOSQUE_ADMIN) {
+            if (!mosqueAdminRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(callerId, mosqueId)) {
+                throw new ForbiddenException("Access denied to this mosque");
+            }
+            return;
+        }
+        throw new ForbiddenException("Access denied to this mosque");
     }
 
     public UUID requireMosqueIdForAdmin(UUID adminUserId) {
@@ -70,12 +90,31 @@ public class MosqueAccessService {
         return mosqueId;
     }
 
+    public UUID resolveMosqueIdForAdminMutation(UUID callerId, UUID clientMosqueId) {
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            if (clientMosqueId == null) {
+                throw new BadRequestException("mosqueId is required");
+            }
+            return clientMosqueId;
+        }
+        if (role == UserRole.MOSQUE_ADMIN) {
+            return requireMosqueIdForAdmin(callerId);
+        }
+        if (clientMosqueId == null) {
+            throw new BadRequestException("mosqueId is required");
+        }
+        assertCanAccessMosque(callerId, clientMosqueId);
+        return clientMosqueId;
+    }
+
     public void requireMosqueAdminWith(UUID callerId, UUID mosqueId) {
         UserRole role = findUserRole(callerId);
         if (role == UserRole.SUPER_ADMIN) {
             return;
         }
-        if (role == UserRole.MOSQUE_ADMIN && mosqueAdminRepository.existsByUserIdAndMosqueId(callerId, mosqueId)) {
+        if (role == UserRole.MOSQUE_ADMIN
+                && mosqueAdminRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(callerId, mosqueId)) {
             return;
         }
         throw new ForbiddenException("Access denied to this mosque");
@@ -114,6 +153,38 @@ public class MosqueAccessService {
             }
         }
         throw new ForbiddenException("Access denied to this student");
+    }
+
+    /**
+     * Staff/super-admin mutate gate. Students must not mutate via staff APIs
+     * (self-excuse stays on {@link #assertCanAccessStudent}).
+     */
+    public void assertCanMutateStudent(UUID callerId, UUID studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        assertCanMutateStudent(callerId, student);
+    }
+
+    public void assertCanMutateStudent(UUID callerId, Student student) {
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            return;
+        }
+        if (role == UserRole.MOSQUE_ADMIN || role == UserRole.TEACHER) {
+            assertCanAccessMosque(callerId, student.getMosque().getId());
+            return;
+        }
+        throw new ForbiddenException("Access denied to mutate this student");
+    }
+
+    /**
+     * Tenant mosque access, or the caller is the author of the record (post soft-leave read).
+     */
+    public void assertCanAccessMosqueOrAuthor(UUID callerId, UUID mosqueId, UUID authorUserId) {
+        if (authorUserId != null && authorUserId.equals(callerId)) {
+            return;
+        }
+        assertCanAccessMosque(callerId, mosqueId);
     }
 
     public void assertCanAccessParentStudent(UUID callerId, ParentStudent link) {
@@ -177,8 +248,50 @@ public class MosqueAccessService {
         if (isTeacher) {
             return true;
         }
-        return mosqueAdminRepository.findByUserId(userId).stream()
+        boolean isAdmin = mosqueAdminRepository.findByUserId(userId).stream()
                 .anyMatch(admin -> admin.getMosque().getId().equals(mosqueId));
+        if (isAdmin) {
+            return true;
+        }
+        return parentStudentRepository.findByParentId(userId).stream()
+                .anyMatch(link -> {
+                    if (link.getMosque() != null && mosqueId.equals(link.getMosque().getId())) {
+                        return true;
+                    }
+                    return link.getStudent() != null
+                            && link.getStudent().getMosque() != null
+                            && mosqueId.equals(link.getStudent().getMosque().getId());
+                });
+    }
+
+    public void assertValidNameFilter(UUID callerId, UUID mosqueIdFilter, String q) {
+        if (!StringUtils.hasText(NameFilterSpecs.normalizeQ(q))) {
+            return;
+        }
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN && mosqueIdFilter == null) {
+            throw new BadRequestException("mosqueId is required when filtering by name");
+        }
+    }
+
+    public UUID resolveEffectiveMosqueIdForList(UUID callerId, UUID mosqueIdFilter) {
+        UserRole role = findUserRole(callerId);
+        UUID callerMosqueId = resolveCallerMosqueId(callerId, role);
+        if (callerMosqueId != null) {
+            return callerMosqueId;
+        }
+        if (role == UserRole.SUPER_ADMIN) {
+            return mosqueIdFilter;
+        }
+        return null;
+    }
+
+    public boolean shouldReturnEmptyListPage(UUID callerId) {
+        UserRole role = findUserRole(callerId);
+        if (role == UserRole.SUPER_ADMIN) {
+            return false;
+        }
+        return resolveCallerMosqueId(callerId, role) == null;
     }
 
     public <T> Page<T> pageForCaller(
@@ -186,10 +299,22 @@ public class MosqueAccessService {
             Pageable pageable,
             Function<UUID, Page<T>> findByMosqueId,
             Function<Pageable, Page<T>> findAll) {
+        return pageForCaller(callerId, pageable, findByMosqueId, findAll, null);
+    }
+
+    public <T> Page<T> pageForCaller(
+            UUID callerId,
+            Pageable pageable,
+            Function<UUID, Page<T>> findByMosqueId,
+            Function<Pageable, Page<T>> findAll,
+            UUID mosqueIdFilter) {
         UserRole role = findUserRole(callerId);
-        UUID mosqueId = resolveCallerMosqueId(callerId, role);
-        if (mosqueId != null) {
-            return findByMosqueId.apply(mosqueId);
+        UUID callerMosqueId = resolveCallerMosqueId(callerId, role);
+        if (callerMosqueId != null) {
+            return findByMosqueId.apply(callerMosqueId);
+        }
+        if (role == UserRole.SUPER_ADMIN && mosqueIdFilter != null) {
+            return findByMosqueId.apply(mosqueIdFilter);
         }
         if (role == UserRole.SUPER_ADMIN) {
             return findAll.apply(pageable);

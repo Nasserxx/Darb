@@ -8,10 +8,14 @@ import type {
 } from "../types/index.ts";
 import { enrollmentKeys } from "./query-keys.ts";
 
-export function useEnrollments(params: PageParams = {}) {
+export function useEnrollments(
+  params: PageParams = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: enrollmentKeys.list(params),
     queryFn: () => enrollmentsApi.list(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -39,8 +43,13 @@ export function useCreateEnrollment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: EnrollmentCreateRequest) =>
-      enrollmentsApi.create(body),
+    mutationFn: ({
+      body,
+      auditReason,
+    }: {
+      body: EnrollmentCreateRequest;
+      auditReason?: string;
+    }) => enrollmentsApi.create(body, auditReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: enrollmentKeys.lists(),
@@ -56,10 +65,12 @@ export function useUpdateEnrollment() {
     mutationFn: ({
       id,
       body,
+      auditReason,
     }: {
       id: string;
       body: EnrollmentUpdateRequest;
-    }) => enrollmentsApi.update(id, body),
+      auditReason?: string;
+    }) => enrollmentsApi.update(id, body, auditReason),
     onSuccess: (_data, { id }) => {
       void queryClient.invalidateQueries({
         queryKey: enrollmentKeys.lists(),

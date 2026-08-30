@@ -21,6 +21,12 @@ export function buildPageUrl(path: string, params: PageParams = {}): string {
   if (params.city) {
     search.set("city", params.city);
   }
+  if (params.mosqueId) {
+    search.set("mosqueId", params.mosqueId);
+  }
+  if (params.status) {
+    search.set("status", params.status);
+  }
   const query = search.toString();
   return query ? `${path}?${query}` : path;
 }

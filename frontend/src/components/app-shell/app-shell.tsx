@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { AppLogoLink } from "@/components/app-logo-link.tsx";
+import { NotificationsBell } from "@/components/app-shell/notifications-bell.tsx";
 import { CapabilityChip } from "@/components/shared/capability-chip.tsx";
 import { LocaleSwitcher } from "@/components/locale-switcher.tsx";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,21 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
-import { translateRole } from "@/i18n/index.ts";
+import { isRtlLocale, translateRole } from "@/i18n/index.ts";
 import { getNavItemsForRole, mosqueNavMeta } from "@/lib/navigation/app-nav.ts";
+import { hasRole } from "@/lib/navigation/role-permissions.ts";
+import type { UserRole } from "@/lib/types/api.ts";
 import { cn } from "@/lib/utils.ts";
 import { LogOutIcon, UserIcon } from "lucide-react";
+
+const NOTIFICATION_BELL_ROLES: UserRole[] = [
+  "SUPER_ADMIN",
+  "MOSQUE_ADMIN",
+  "TEACHER",
+  "STUDENT",
+  "PARENT",
+];
+
 
 type AppShellProps = {
   children: ReactNode;
@@ -49,7 +61,11 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r border-border">
+      <Sidebar
+        collapsible="icon"
+        side={isRtlLocale(locale) ? "right" : "left"}
+        className="border-e border-border"
+      >
         <SidebarHeader className="brand-panel-pattern border-b border-border/60 px-4 py-4">
           <AppLogoLink size="sm" />
         </SidebarHeader>
@@ -98,6 +114,9 @@ export function AppShell({ children }: AppShellProps) {
             <CapabilityChip className="hidden sm:inline-flex" />
           </div>
           <div className="flex items-center gap-2">
+            {hasRole(user?.role, NOTIFICATION_BELL_ROLES) ? (
+              <NotificationsBell />
+            ) : null}
             <LocaleSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

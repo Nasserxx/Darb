@@ -31,6 +31,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -150,6 +151,46 @@ public class MosqueController {
                 .build());
     }
 
+    @GetMapping("/join-requests/mine")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<MemberJoinRequestResponse>>> listMyInvites(
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<List<MemberJoinRequestResponse>>builder()
+                .success(true)
+                .message("Invitations retrieved successfully")
+                .data(joinRequestService.listMine(userId))
+                .build());
+    }
+
+    @PostMapping("/join-requests/{id}/accept")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> acceptInvite(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
+                .success(true)
+                .message("Invitation accepted")
+                .data(joinRequestService.accept(userId, id, auditReasonHeader, null))
+                .build());
+    }
+
+    @PostMapping("/join-requests/{id}/refuse")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> refuseInvite(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
+                .success(true)
+                .message("Invitation refused")
+                .data(joinRequestService.refuse(userId, id, auditReasonHeader, null))
+                .build());
+    }
+
     @GetMapping("/join/preview")
     @Operation(
             summary = "Preview mosque by invite code",
@@ -223,6 +264,27 @@ public class MosqueController {
                         .message("Joined mosque successfully")
                         .data(mosqueService.joinMosque(userId, request.getInviteCode()))
                         .build());
+    }
+
+    @GetMapping("/cities")
+    @Operation(
+            summary = "List distinct cities for a country",
+            description = "Returns distinct non-blank city names from mosques in the given ISO 3166-1 alpha-2 country."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Cities retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid country code"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<String>>> listCities(
+            @RequestParam("country") String country,
+            @RequestParam(value = "activeOnly", defaultValue = "false") boolean activeOnly) {
+        return ResponseEntity.ok(ApiResponse.<List<String>>builder()
+                .success(true)
+                .message("Cities retrieved successfully")
+                .data(mosqueService.listCities(country, activeOnly))
+                .build());
     }
 
     @GetMapping("/{id}")
@@ -307,8 +369,10 @@ public class MosqueController {
     })
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID id) {
-        mosqueService.delete(id);
+            Authentication authentication,
+            @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
+        mosqueService.delete((UUID) authentication.getPrincipal(), id, auditReasonHeader, null);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Mosque deactivated successfully")

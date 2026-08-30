@@ -1,7 +1,10 @@
 package com.darb.entities;
 
+import com.darb.entities.enums.ParentRelationship;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -33,8 +36,9 @@ public class ParentStudent extends BaseAuditableEntity {
     @JoinColumn(name = "mosque_id")
     private Mosque mosque;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 30)
-    private String relationship;
+    private ParentRelationship relationship;
 
     @Column(name = "is_primary", nullable = false)
     private Boolean isPrimary;

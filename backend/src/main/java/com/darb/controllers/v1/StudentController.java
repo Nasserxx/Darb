@@ -4,7 +4,9 @@ import com.darb.dtos.common.ApiResponse;
 import com.darb.dtos.common.InviteCodeJoinRequest;
 import com.darb.dtos.common.MosqueIdRequest;
 import com.darb.dtos.common.PageResponse;
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.dtos.student.StudentCreateRequest;
+import com.darb.dtos.student.StudentProvisionRequest;
 import com.darb.dtos.student.StudentResponse;
 import com.darb.dtos.student.StudentUpdateRequest;
 import com.darb.services.StudentService;
@@ -44,11 +46,14 @@ public class StudentController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<PageResponse<StudentResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<StudentResponse> page = studentService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<StudentResponse> page = studentService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<StudentResponse>>builder()
                 .success(true)
                 .message("Students retrieved successfully")
@@ -124,25 +129,39 @@ public class StudentController {
                         .build());
     }
 
+    @PostMapping("/provision")
+    @Operation(summary = "Provision a new student login and seat immediately")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<StudentResponse>> provision(
+            Authentication authentication,
+            @Valid @RequestBody StudentProvisionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<StudentResponse>builder()
+                        .success(true)
+                        .message("Student provisioned successfully")
+                        .data(studentService.provision((UUID) authentication.getPrincipal(), request))
+                        .build());
+    }
+
     @PostMapping
     @Operation(
-            summary = "Create a student profile",
-            description = "Creates a new student profile linked to an existing user and mosque. Accessible by SUPER_ADMIN and MOSQUE_ADMIN."
+            summary = "Invite an existing user as a student",
+            description = "Creates an ADMIN_INVITE. Membership is created only after the user accepts."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Student created successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Invitation created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request body or validation errors"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
-    public ResponseEntity<ApiResponse<StudentResponse>> create(
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> create(
             Authentication authentication,
             @Valid @RequestBody StudentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<StudentResponse>builder()
+                .body(ApiResponse.<MemberJoinRequestResponse>builder()
                         .success(true)
-                        .message("Student created successfully")
+                        .message("Invitation sent successfully")
                         .data(studentService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }

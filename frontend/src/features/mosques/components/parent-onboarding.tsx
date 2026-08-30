@@ -21,14 +21,24 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { parentStudentsApi } from "@/features/parent-students/api/parent-students-api.ts";
+import { consumeJoinIntent } from "@/lib/navigation/post-auth.ts";
 
 type ParentOnboardingProps = {
   onComplete: () => void;
 };
 
+function readParentJoinCode(): string {
+  const intent = consumeJoinIntent();
+  if (intent?.code && intent.role.toUpperCase() === "PARENT") {
+    return intent.code;
+  }
+  return "";
+}
+
 export function ParentOnboarding({ onComplete }: ParentOnboardingProps) {
   const { t } = useTranslation("app");
-  const [inviteCode, setInviteCode] = useState("");
+  // ponytail: consume on first render — avoids setState-in-effect lint
+  const [inviteCode, setInviteCode] = useState(readParentJoinCode);
   const [debouncedCode, setDebouncedCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linked, setLinked] = useState(false);

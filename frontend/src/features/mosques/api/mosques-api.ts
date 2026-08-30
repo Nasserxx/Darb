@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client.ts";
+import { withAuditReason } from "@/lib/api/audit-reason.ts";
 import {
   fetchData,
   fetchPage,
@@ -25,6 +26,14 @@ const BASE_PATH = "/api/v1/mosques";
 export const mosquesApi = {
   list: (params: PageParams = {}) =>
     fetchPage<MosqueResponse>(BASE_PATH, params),
+
+  listCities: (country: string, opts?: { activeOnly?: boolean }) => {
+    const params = new URLSearchParams({ country });
+    if (opts?.activeOnly) {
+      params.set("activeOnly", "true");
+    }
+    return fetchData<string[]>(`${BASE_PATH}/cities?${params.toString()}`);
+  },
 
   getById: (id: string) => fetchData<MosqueResponse>(`${BASE_PATH}/${id}`),
 
@@ -71,6 +80,31 @@ export const mosquesApi = {
       method: "POST",
       body: JSON.stringify({ mosqueId }),
     }),
+
+  listMyInvitations: () =>
+    fetchData<MemberJoinRequestResponse[]>(`${BASE_PATH}/join-requests/mine`),
+
+  acceptJoinRequest: (id: string, auditReason?: string) =>
+    mutateData<MemberJoinRequestResponse>(
+      `${BASE_PATH}/join-requests/${id}/accept`,
+      {
+        method: "POST",
+        ...(auditReason
+          ? { headers: withAuditReason(undefined, auditReason) }
+          : {}),
+      },
+    ),
+
+  refuseJoinRequest: (id: string, auditReason?: string) =>
+    mutateData<MemberJoinRequestResponse>(
+      `${BASE_PATH}/join-requests/${id}/refuse`,
+      {
+        method: "POST",
+        ...(auditReason
+          ? { headers: withAuditReason(undefined, auditReason) }
+          : {}),
+      },
+    ),
 
   cancelMyJoinRequest: async (): Promise<void> => {
     await apiFetch<ApiResponse<void>>(`${BASE_PATH}/join-requests/my`, {

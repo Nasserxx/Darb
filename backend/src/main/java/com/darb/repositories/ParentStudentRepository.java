@@ -14,4 +14,10 @@ public interface ParentStudentRepository extends JpaRepository<ParentStudent, UU
     List<ParentStudent> findByParentId(UUID parentUserId);
     List<ParentStudent> findByStudentId(UUID studentId);
     Page<ParentStudent> findByMosqueId(UUID mosqueId, Pageable pageable);
+
+    boolean existsByParent_IdAndStudent_Id(UUID parentId, UUID studentId);
+
+    boolean existsByParent_IdAndStudent_IdAndIdNot(UUID parentId, UUID studentId, UUID id);
+
+    boolean existsByParent_IdAndStudent_Mosque_Id(UUID parentId, UUID mosqueId);
 }

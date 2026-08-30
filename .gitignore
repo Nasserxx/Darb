@@ -13,8 +13,6 @@ Thumbs.db
 .env.*.local
 !.env.example
 
-# --- Cursor ---
-.cursor/
 
 # --- Java / JVM (repo-wide; prefer backend/target/ for build output) ---
 *.class
@@ -50,3 +48,5 @@ node_modules
 .superpowers
 superpowers
 .opencode
+.qa*
+.watch*

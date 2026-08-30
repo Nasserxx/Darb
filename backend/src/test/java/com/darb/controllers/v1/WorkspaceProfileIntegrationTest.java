@@ -102,7 +102,7 @@ class WorkspaceProfileIntegrationTest extends PostgresIntegrationTestBase {
                 onboardResult.getResponse().getContentAsString(),
                 "$.data.mosque.id");
 
-        mockMvc.perform(post("/api/v1/teachers")
+        MvcResult inviteResult = mockMvc.perform(post("/api/v1/teachers")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -112,9 +112,15 @@ class WorkspaceProfileIntegrationTest extends PostgresIntegrationTestBase {
                                   "specialization": "Tajweed"
                                 }
                                 """.formatted(teacher.getId(), mosqueId)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
 
+        String requestId = com.jayway.jsonpath.JsonPath.read(
+                inviteResult.getResponse().getContentAsString(), "$.data.id");
         String teacherToken = login(teacherEmail);
+        mockMvc.perform(post("/api/v1/mosques/join-requests/" + requestId + "/accept")
+                        .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/me/profile")
                         .header("Authorization", "Bearer " + teacherToken))

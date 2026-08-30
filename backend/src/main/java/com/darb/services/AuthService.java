@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.UUID;
 
 @Slf4j
@@ -37,8 +38,9 @@ public class AuthService {
 
     @Transactional
     public void register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("User", "email", request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new DuplicateResourceException("User", "email", email);
         }
         if (request.getPhone() != null && !request.getPhone().isBlank()
                 && userRepository.existsByPhone(request.getPhone())) {
@@ -49,12 +51,18 @@ public class AuthService {
 
         User user = User.builder()
                 .fullName(request.getFullName())
-                .email(request.getEmail())
+                .email(email)
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .gender(request.getGender())
                 .dateOfBirth(request.getDateOfBirth())
+                .city(request.getCity())
+                .addressCountry(request.getAddressCountry())
+                .addressPostalCode(request.getAddressPostalCode())
+                .addressStreet(request.getAddressStreet())
+                .addressHouseNumber(request.getAddressHouseNumber())
+                .addressState(request.getAddressState())
                 .isActive(true)
                 .build();
 
@@ -72,7 +80,8 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        String email = normalizeEmail(request.getEmail());
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
         if (!user.getIsActive()) {
@@ -83,12 +92,14 @@ public class AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
 
+        // Kill all prior refresh hashes before minting a new session
+        revokeAllRefreshTokens(user.getId());
+
         user.setLastLogin(Instant.now());
         userRepository.save(user);
 
         AuthResponse response = generateAuthResponse(user);
 
-        // Store hash of the new refresh token
         String tokenHash = sha256Hex(response.getRefreshToken());
         refreshTokenHashRepository.save(RefreshTokenHash.builder()
                 .user(user)
@@ -144,13 +155,20 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        // Invalidate all existing refresh tokens
-        refreshTokenHashRepository.deleteByUserId(userId);
+        revokeAllRefreshTokens(userId);
     }
 
     @Transactional
     public void logout(UUID userId) {
+        revokeAllRefreshTokens(userId);
+    }
+
+    private void revokeAllRefreshTokens(UUID userId) {
         refreshTokenHashRepository.deleteByUserId(userId);
+    }
+
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String sha256Hex(String input) {

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { getCountryOptions } from "@/lib/countries.ts";
 
+import { CitySelect } from "./city-select.tsx";
 import { TimeZoneSelect } from "./timezone-select.tsx";
 
 type MosqueFieldsProps<TFormValues extends FieldValues> = {
@@ -107,11 +108,14 @@ export function MosqueFields<TFormValues extends FieldValues>({
               id={`${idPrefix}-address-country`}
               options={countryOptions}
               value={watchString(watch, "addressCountry") ?? null}
-              onValueChange={(value) =>
+              onValueChange={(value) => {
                 setValue("addressCountry" as never, (value ?? "") as never, {
                   shouldValidate: true,
-                })
-              }
+                });
+                setValue("city" as never, "" as never, {
+                  shouldValidate: true,
+                });
+              }}
               placeholder={t("mosques.country")}
             />
             {errorFor("addressCountry") ? (
@@ -176,11 +180,20 @@ export function MosqueFields<TFormValues extends FieldValues>({
             <FieldLabel htmlFor={`${idPrefix}-city`}>
               {t("mosques.city")} <span className="text-destructive">*</span>
             </FieldLabel>
-            <Input
+            <CitySelect
               id={`${idPrefix}-city`}
-              autoComplete="address-level2"
-              aria-invalid={!!errorFor("city")}
-              {...register("city" as never)}
+              country={watchString(watch, "addressCountry")}
+              value={watchString(watch, "city") ?? null}
+              onValueChange={(value) =>
+                setValue("city" as never, (value ?? "") as never, {
+                  shouldValidate: true,
+                })
+              }
+              mode="creatable"
+              activeOnly={false}
+              allowCustomValue={watchString(watch, "city") || undefined}
+              error={!!errorFor("city")}
+              placeholder={t("mosques.city")}
             />
             {errorFor("city") ? (
               <FieldDescription className="text-destructive">

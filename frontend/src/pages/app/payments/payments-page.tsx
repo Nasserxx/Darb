@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/shared/data-table.tsx";
 import { EntityFormDialog } from "@/components/shared/entity-form-dialog.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -20,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { useCircles } from "@/features/circles/hooks/use-circles.ts";
 import { useMosques } from "@/features/mosques/hooks/use-mosques.ts";
 import {
@@ -38,13 +38,13 @@ import {
 import type { PaymentResponse } from "@/features/payments/types/index.ts";
 import { useStudents } from "@/features/students/hooks/use-students.ts";
 import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
+import { useScopedMosqueForAdmin } from "@/features/workspace/hooks/use-scoped-mosque-for-admin.ts";
 import {
   applyFieldErrors,
   toMutationError,
 } from "@/lib/errors/map-api-error.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
-import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import type {
   PaymentCycle,
   PaymentMethod,
@@ -78,32 +78,21 @@ const PAYMENT_CYCLES: PaymentCycle[] = [
 
 export function PaymentsPage() {
   const { t } = useTranslation("app");
-  const { user } = useAuth();
   const { mosqueId: workspaceMosqueId } = useWorkspace();
-  const isSuperAdmin = user ? normalizeApiRole(user.role) === "SUPER_ADMIN" : false;
-  const [selectedMosqueId, setSelectedMosqueId] = useState<string>("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<PaymentResponse | null>(null);
-  const { params, setPage } = usePagination();
+  const { params, setPage, setSize, setFilter } = usePagination();
+  const scopedMosqueId = params.mosqueId;
 
-  const activeMosqueId = isSuperAdmin
-    ? selectedMosqueId || undefined
-    : workspaceMosqueId ?? undefined;
-
-  const listAll = isSuperAdmin && !activeMosqueId;
-  const listMosqueId = listAll
-    ? undefined
-    : activeMosqueId ?? workspaceMosqueId ?? undefined;
-
-  const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
   const { data: allPayments, isLoading: allLoading } = usePayments(params);
   const { data: mosquePayments, isLoading: mosqueLoading } = useMosquePayments(
-    listMosqueId,
+    scopedMosqueId,
     params,
   );
 
-  const data = listAll ? allPayments : mosquePayments;
-  const isLoading = listAll ? allLoading : mosqueLoading;
+  const data = scopedMosqueId ? mosquePayments : allPayments;
+  const isLoading = scopedMosqueId ? mosqueLoading : allLoading;
+  const defaultMosqueId = scopedMosqueId ?? workspaceMosqueId ?? "";
 
   const columns = useMemo(
     () => [
@@ -159,30 +148,15 @@ export function PaymentsPage() {
         }
       />
 
-      {isSuperAdmin ? (
-        <Field className="max-w-sm">
-          <FieldLabel>{t("payments.mosque")}</FieldLabel>
-          <Select
-            value={selectedMosqueId || "__all__"}
-            onValueChange={(value) => {
-              setSelectedMosqueId(value === "__all__" ? "" : value);
-              setPage(0);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={t("payments.mosquePlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">{t("payments.allMosques")}</SelectItem>
-              {mosquesPage?.content.map((mosque) => (
-                <SelectItem key={mosque.id} value={mosque.id}>
-                  {mosque.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      ) : null}
+      <SuperAdminMosqueScopeBar
+        mosqueId={scopedMosqueId}
+        q={params.q}
+        nameFilter={{
+          label: t("superAdminScope.filterStudentName"),
+          placeholder: t("superAdminScope.filterStudentNamePlaceholder"),
+        }}
+        onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
+      />
 
       <DataTable
         columns={columns}
@@ -190,12 +164,14 @@ export function PaymentsPage() {
         isLoading={isLoading}
         emptyMessage={t("payments.empty")}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
       />
 
       <PaymentCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        defaultMosqueId={activeMosqueId ?? workspaceMosqueId ?? ""}
+        defaultMosqueId={defaultMosqueId}
       />
 
       {editing ? (
@@ -221,10 +197,14 @@ function PaymentCreateDialog({
   defaultMosqueId: string;
 }) {
   const { t } = useTranslation("app");
+  const { showMosqueField } = useScopedMosqueForAdmin();
   const createPayment = useCreatePayment();
   const { data: studentsPage } = useStudents({ page: 0, size: 100 });
   const { data: circlesPage } = useCircles({ page: 0, size: 100 });
-  const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
+  const { data: mosquesPage } = useMosques(
+    { page: 0, size: 100 },
+    { enabled: showMosqueField },
+  );
 
   const {
     register,
@@ -280,27 +260,29 @@ function PaymentCreateDialog({
       onSubmit={() => void handleSubmit(onSubmit)()}
     >
       <FieldGroup>
-        <Field data-invalid={!!errors.mosqueId}>
-          <FieldLabel>{t("payments.mosque")}</FieldLabel>
-          <Controller
-            control={control}
-            name="mosqueId"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("payments.mosquePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {mosquesPage?.content.map((mosque) => (
-                    <SelectItem key={mosque.id} value={mosque.id}>
-                      {mosque.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </Field>
+        {showMosqueField ? (
+          <Field data-invalid={!!errors.mosqueId}>
+            <FieldLabel>{t("payments.mosque")}</FieldLabel>
+            <Controller
+              control={control}
+              name="mosqueId"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("payments.mosquePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mosquesPage?.content.map((mosque) => (
+                      <SelectItem key={mosque.id} value={mosque.id}>
+                        {mosque.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </Field>
+        ) : null}
         <Field data-invalid={!!errors.studentId}>
           <FieldLabel>{t("payments.student")}</FieldLabel>
           <Controller

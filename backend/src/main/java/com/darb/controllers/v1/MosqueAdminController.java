@@ -48,28 +48,30 @@ public class MosqueAdminController {
     }
 
     @PostMapping("/join-requests/{id}/approve")
-    @PreAuthorize("hasRole('MOSQUE_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> approveJoinRequest(
             Authentication authentication,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
         UUID userId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
                 .success(true)
                 .message("Join request approved")
-                .data(joinRequestService.approve(userId, id))
+                .data(joinRequestService.approve(userId, id, auditReasonHeader, null))
                 .build());
     }
 
     @PostMapping("/join-requests/{id}/reject")
-    @PreAuthorize("hasRole('MOSQUE_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> rejectJoinRequest(
             Authentication authentication,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader) {
         UUID userId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(ApiResponse.<MemberJoinRequestResponse>builder()
                 .success(true)
                 .message("Join request rejected")
-                .data(joinRequestService.reject(userId, id))
+                .data(joinRequestService.reject(userId, id, auditReasonHeader, null))
                 .build());
     }
 
@@ -87,8 +89,11 @@ public class MosqueAdminController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<MosqueAdminResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<MosqueAdminResponse> page = mosqueAdminService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<MosqueAdminResponse> page = mosqueAdminService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<MosqueAdminResponse>>builder()
                 .success(true)
                 .message("Mosque admins retrieved successfully")

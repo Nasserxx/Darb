@@ -6,11 +6,16 @@ import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { DataTable } from "@/components/shared/data-table.tsx";
 import { PageHeader } from "@/components/shared/page-header.tsx";
+import { SuperAdminAuditReasonDialog } from "@/components/shared/super-admin-audit-reason-dialog.tsx";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
+import { FormerMemberBadge } from "@/components/shared/former-member-badge.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
+import { hasRole } from "@/lib/navigation/role-permissions.ts";
 
 import { MosqueAdminFormDialog } from "./mosque-admin-form-dialog.tsx";
 import {
@@ -21,7 +26,9 @@ import type { MosqueAdminResponse } from "../types/index.ts";
 
 export function MosqueAdminsList() {
   const { t } = useTranslation("app");
-  const { params, setPage } = usePagination();
+  const { user } = useAuth();
+  const isSuperAdmin = hasRole(user?.role, ["SUPER_ADMIN"]);
+  const { params, setPage, setSize, setFilter } = usePagination();
   const { data, isLoading } = useMosqueAdmins(params);
   const deleteAdmin = useDeleteMosqueAdmin();
 
@@ -39,10 +46,13 @@ export function MosqueAdminsList() {
     setFormOpen(true);
   }
 
-  async function handleDelete() {
+  async function handleDelete(auditReason?: string) {
     if (!deletingAdmin) return;
     try {
-      await deleteAdmin.mutateAsync(deletingAdmin.id);
+      await deleteAdmin.mutateAsync({
+        id: deletingAdmin.id,
+        auditReason,
+      });
       toast.success(t("mosqueAdmins.deleteSuccess"));
       setDeletingAdmin(null);
     } catch (error) {
@@ -61,6 +71,16 @@ export function MosqueAdminsList() {
             {t("mosqueAdmins.create")}
           </Button>
         }
+      />
+
+      <SuperAdminMosqueScopeBar
+        mosqueId={params.mosqueId}
+        q={params.q}
+        nameFilter={{
+          label: t("superAdminScope.filterAdminName"),
+          placeholder: t("superAdminScope.filterAdminNamePlaceholder"),
+        }}
+        onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
       />
 
       <DataTable
@@ -91,6 +111,16 @@ export function MosqueAdminsList() {
               ),
           },
           {
+            id: "status",
+            header: t("mosqueAdmins.status"),
+            cell: (row) =>
+              row.isActive ? (
+                <Badge variant="default">{t("mosqueAdmins.active")}</Badge>
+              ) : (
+                <FormerMemberBadge />
+              ),
+          },
+          {
             id: "actions",
             header: t("mosqueAdmins.actions"),
             className: "w-28 text-end",
@@ -99,6 +129,7 @@ export function MosqueAdminsList() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
+                  disabled={!row.isActive}
                   onClick={() => openEdit(row)}
                   aria-label={t("actions.edit")}
                 >
@@ -107,6 +138,7 @@ export function MosqueAdminsList() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
+                  disabled={!row.isActive}
                   onClick={() => setDeletingAdmin(row)}
                   aria-label={t("actions.delete")}
                 >
@@ -119,6 +151,8 @@ export function MosqueAdminsList() {
         data={data}
         isLoading={isLoading}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
       />
 
       <MosqueAdminFormDialog
@@ -127,14 +161,30 @@ export function MosqueAdminsList() {
         mosqueAdmin={editingAdmin}
       />
 
-      <ConfirmDeleteDialog
-        open={Boolean(deletingAdmin)}
-        onOpenChange={(open) => {
-          if (!open) setDeletingAdmin(null);
-        }}
-        onConfirm={() => void handleDelete()}
-        isPending={deleteAdmin.isPending}
-      />
+      {isSuperAdmin ? (
+        <SuperAdminAuditReasonDialog
+          open={Boolean(deletingAdmin)}
+          onOpenChange={(open) => {
+            if (!open) setDeletingAdmin(null);
+          }}
+          title={t("mosqueAdmins.deleteTitle")}
+          description={t("mosqueAdmins.deleteSoftLeaveDescription")}
+          confirmLabel={t("confirmDelete.confirm")}
+          isPending={deleteAdmin.isPending}
+          onConfirm={(reason) => void handleDelete(reason)}
+        />
+      ) : (
+        <ConfirmDeleteDialog
+          open={Boolean(deletingAdmin)}
+          onOpenChange={(open) => {
+            if (!open) setDeletingAdmin(null);
+          }}
+          title={t("mosqueAdmins.deleteTitle")}
+          description={t("mosqueAdmins.deleteSoftLeaveDescription")}
+          onConfirm={() => void handleDelete()}
+          isPending={deleteAdmin.isPending}
+        />
+      )}
     </div>
   );
 }

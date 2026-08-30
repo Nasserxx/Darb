@@ -63,3 +63,10 @@ export async function changePassword(
     body: JSON.stringify(body),
   });
 }
+
+export async function logout(): Promise<void> {
+  await apiFetch<ApiResponse<void>>("/api/v1/auth/logout", {
+    method: "POST",
+    auth: true,
+  });
+}

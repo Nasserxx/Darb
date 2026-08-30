@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/shared/page-header.tsx";
+import { SuperAdminAuditReasonDialog } from "@/components/shared/super-admin-audit-reason-dialog.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field.tsx";
@@ -37,7 +38,10 @@ import { useEnrollments } from "@/features/enrollments/hooks/use-enrollments.ts"
 import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 import { formatShortId } from "@/lib/format/ids.ts";
-import { canMarkAttendance } from "@/lib/navigation/role-permissions.ts";
+import {
+  canMarkAttendance,
+  hasRole,
+} from "@/lib/navigation/role-permissions.ts";
 import { ArrowLeftIcon } from "lucide-react";
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = [
@@ -63,6 +67,7 @@ type RosterRow = {
 export function CircleAttendancePage() {
   const { t } = useTranslation("app");
   const { user } = useAuth();
+  const isSuperAdmin = hasRole(user?.role, ["SUPER_ADMIN"]);
   const { locale, circleId } = useParams<{ locale: string; circleId: string }>();
   const localePrefix = locale ?? DEFAULT_LOCALE;
   const canMark = canMarkAttendance(user?.role);
@@ -72,6 +77,7 @@ export function CircleAttendancePage() {
     Record<string, AttendanceStatus>
   >({});
   const [isSaving, setIsSaving] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const { data: circle, isLoading: circleLoading } = useCircle(circleId ?? "", {
     enabled: Boolean(circleId),
@@ -125,7 +131,7 @@ export function CircleAttendancePage() {
     setStatusOverrides((prev) => ({ ...prev, [enrollmentId]: status }));
   }
 
-  async function handleSave() {
+  async function persistRoster(auditReason?: string) {
     if (!circleId) return;
 
     setIsSaving(true);
@@ -137,18 +143,25 @@ export function CircleAttendancePage() {
           await updateAttendance.mutateAsync({
             id: row.attendanceId,
             body: { status: row.status },
+            auditReason,
           });
         } else {
           await createAttendance.mutateAsync({
-            enrollmentId: row.enrollmentId,
-            circleId,
-            sessionDate,
-            status: row.status,
+            body: {
+              enrollmentId: row.enrollmentId,
+              circleId,
+              sessionDate,
+              status: row.status,
+              // ponytail: BE @NotNull scheduledStart — was the opaque 400
+              scheduledStart: circle?.startTime ?? "00:00",
+            },
+            auditReason,
           });
         }
         savedCount++;
       }
       toast.success(t("attendance.saved", { count: savedCount }));
+      setAuditOpen(false);
     } catch (error) {
       const { message } = toMutationError(error, t);
       toast.error(message || t("attendance.saveError"));
@@ -157,11 +170,21 @@ export function CircleAttendancePage() {
     }
   }
 
+  function handleSave() {
+    if (!circleId) return;
+    if (isSuperAdmin) {
+      setAuditOpen(true);
+      return;
+    }
+    void persistRoster();
+  }
+
   if (!canMark) {
     return <Navigate to={`/${localePrefix}/forbidden`} replace />;
   }
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       <Button variant="ghost" size="sm" className="w-fit" asChild>
         <Link to={`/${localePrefix}/attendance`}>
@@ -174,7 +197,7 @@ export function CircleAttendancePage() {
         title={circle?.name ?? t("attendance.rosterTitle")}
         description={t("attendance.rosterDescription")}
         actions={
-          <Button disabled={isSaving || roster.length === 0} onClick={() => void handleSave()}>
+          <Button disabled={isSaving || roster.length === 0} onClick={handleSave}>
             {isSaving ? <Spinner data-icon="inline-start" /> : null}
             {t("attendance.saveRoster")}
           </Button>
@@ -251,6 +274,16 @@ export function CircleAttendancePage() {
         </div>
       )}
     </div>
+
+      <SuperAdminAuditReasonDialog
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        title={t("superAdmin.auditReason.title")}
+        confirmLabel={t("superAdmin.auditReason.confirm")}
+        isPending={isSaving}
+        onConfirm={(reason) => persistRoster(reason)}
+      />
+    </>
   );
 }
 

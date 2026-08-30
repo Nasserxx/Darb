@@ -1,4 +1,4 @@
-import type { Uuid } from "@/lib/types/api.ts";
+import type { ParentRelationship, Uuid } from "@/lib/types/api.ts";
 
 export interface ParentStudentResponse {
   id: Uuid;
@@ -6,7 +6,7 @@ export interface ParentStudentResponse {
   parentName: string;
   studentId: Uuid;
   studentName: string;
-  relationship: string | null;
+  relationship: ParentRelationship | null;
   isPrimary: boolean;
   receivesNotifications: boolean;
 }
@@ -14,13 +14,15 @@ export interface ParentStudentResponse {
 export interface ParentStudentCreateRequest {
   parentUserId: Uuid;
   studentId: Uuid;
-  relationship?: string;
+  relationship?: ParentRelationship;
   isPrimary?: boolean;
   receivesNotifications?: boolean;
 }
 
 export interface ParentStudentUpdateRequest {
-  relationship?: string;
+  parentUserId: Uuid;
+  studentId: Uuid;
+  relationship?: ParentRelationship;
   isPrimary?: boolean;
   receivesNotifications?: boolean;
 }

@@ -15,10 +15,12 @@ import com.darb.repositories.PaymentRepository;
 import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
+import com.darb.util.NameFilterSpecs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,13 +39,13 @@ public class PaymentService {
     private final MosqueAccessService mosqueAccessService;
 
     @Transactional(readOnly = true)
-    public Page<PaymentResponse> findAll(UUID callerId, Pageable pageable) {
-        return mosqueAccessService.pageForCaller(
-                callerId,
-                pageable,
-                mosqueId -> paymentRepository.findByMosqueId(mosqueId, pageable),
-                paymentRepository::findAll
-        ).map(this::toResponse);
+    public Page<PaymentResponse> findAll(UUID callerId, Pageable pageable, UUID mosqueIdFilter, String q) {
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueIdFilter, q);
+        if (mosqueAccessService.shouldReturnEmptyListPage(callerId)) {
+            return Page.empty(pageable);
+        }
+        UUID mosqueId = mosqueAccessService.resolveEffectiveMosqueIdForList(callerId, mosqueIdFilter);
+        return findPaymentsPage(mosqueId, q, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -54,20 +56,30 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public Page<PaymentResponse> findByMosqueId(UUID callerId, UUID mosqueId, Pageable pageable) {
+    public Page<PaymentResponse> findByMosqueId(UUID callerId, UUID mosqueId, Pageable pageable, String q) {
         mosqueAccessService.assertCanAccessMosque(callerId, mosqueId);
-        return paymentRepository.findByMosqueId(mosqueId, pageable).map(this::toResponse);
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueId, q);
+        return findPaymentsPage(mosqueId, q, pageable);
+    }
+
+    private Page<PaymentResponse> findPaymentsPage(UUID mosqueId, String q, Pageable pageable) {
+        Specification<Payment> spec = (root, query, cb) -> cb.conjunction();
+        if (mosqueId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("mosque").get("id"), mosqueId));
+        }
+        spec = NameFilterSpecs.and(spec, NameFilterSpecs.paymentStudentFullNameLike(q));
+        return paymentRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional
     public PaymentResponse create(UUID callerId, PaymentCreateRequest request) {
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
         Circle circle = circleRepository.findById(request.getCircleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Circle", "id", request.getCircleId()));
-        Mosque mosque = mosqueRepository.findById(request.getMosqueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
-        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
         User recordedBy = userRepository.findById(request.getRecordedBy())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getRecordedBy()));
 

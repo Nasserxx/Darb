@@ -2,6 +2,7 @@ package com.darb.controllers.v1;
 
 import com.darb.dtos.common.ApiResponse;
 import com.darb.dtos.common.PageResponse;
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.dtos.parentstudent.ParentStudentCreateRequest;
 import com.darb.dtos.parentstudent.ParentStudentJoinPreviewResponse;
 import com.darb.dtos.parentstudent.ParentStudentJoinRequest;
@@ -46,11 +47,14 @@ public class ParentStudentController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'PARENT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'PARENT', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<PageResponse<ParentStudentResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<ParentStudentResponse> page = parentStudentService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<ParentStudentResponse> page = parentStudentService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<ParentStudentResponse>>builder()
                 .success(true)
                 .message("Parent-student relationships retrieved successfully")
@@ -99,15 +103,15 @@ public class ParentStudentController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
-    public ResponseEntity<ApiResponse<ParentStudentResponse>> create(
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> create(
             Authentication authentication,
             @RequestHeader(value = "X-Audit-Reason", required = false) String auditReasonHeader,
             @Valid @RequestBody ParentStudentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<ParentStudentResponse>builder()
+                .body(ApiResponse.<MemberJoinRequestResponse>builder()
                         .success(true)
-                        .message("Parent-student relationship created successfully")
+                        .message("Invitation sent successfully")
                         .data(parentStudentService.create(
                                 (UUID) authentication.getPrincipal(),
                                 request,

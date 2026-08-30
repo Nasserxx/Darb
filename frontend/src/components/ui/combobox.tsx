@@ -1,6 +1,6 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { useMemo } from "react";
+import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils.ts";
 
@@ -13,6 +13,13 @@ type ComboboxProps = {
   placeholder?: string;
   className?: string;
   id?: string;
+  disabled?: boolean;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
+  /** When set, empty filter shows an action to commit the typed query. */
+  onCreateValue?: (value: string) => void;
+  createLabel?: (query: string) => string;
+  clearAriaLabel?: string;
 };
 
 export function Combobox({
@@ -22,13 +29,22 @@ export function Combobox({
   placeholder,
   className,
   id,
+  disabled,
+  searchPlaceholder,
+  emptyLabel,
+  onCreateValue,
+  createLabel,
+  clearAriaLabel,
 }: ComboboxProps) {
+  const [inputValue, setInputValue] = useState("");
   const items = useMemo(() => options.map((option) => option.value), [options]);
   const labelByValue = useMemo(
     () => new Map(options.map((option) => [option.value, option.label])),
     [options],
   );
   const selected = options.find((option) => option.value === value);
+  const trimmedQuery = inputValue.trim();
+  const showCreate = Boolean(onCreateValue) && trimmedQuery.length > 0;
 
   return (
     <ComboboxPrimitive.Root
@@ -37,6 +53,8 @@ export function Combobox({
       onValueChange={onValueChange}
       itemToStringLabel={(itemValue) => labelByValue.get(itemValue) ?? itemValue}
       id={id}
+      disabled={disabled}
+      onInputValueChange={setInputValue}
     >
       <ComboboxPrimitive.Trigger
         type="button"
@@ -46,9 +64,38 @@ export function Combobox({
           className,
         )}
       >
-        <span className={cn("truncate", !selected && "text-muted-foreground")}>
+        <span
+          dir="auto"
+          className={cn("truncate", !selected && "text-muted-foreground")}
+        >
           {selected?.label ?? placeholder ?? "Select…"}
         </span>
+        {value != null ? (
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label={clearAriaLabel ?? "Clear"}
+            className="shrink-0 opacity-60 hover:opacity-100"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onValueChange(null);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onValueChange(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              event.stopPropagation();
+              onValueChange(null);
+            }}
+          >
+            <XIcon className="size-4" />
+          </span>
+        ) : null}
         <ChevronDownIcon className="size-4 opacity-60" />
       </ComboboxPrimitive.Trigger>
       <ComboboxPrimitive.Portal>
@@ -59,13 +106,28 @@ export function Combobox({
           >
             <ComboboxPrimitive.Input
               data-slot="combobox-input"
-              placeholder="Search…"
+              placeholder={searchPlaceholder ?? "Search…"}
               className="mb-1 flex h-10 w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
             />
             <ComboboxPrimitive.Empty>
-              <span className="block px-2 py-1.5 text-sm text-muted-foreground">
-                No results
-              </span>
+              {showCreate ? (
+                <button
+                  type="button"
+                  className="flex w-full cursor-default items-center rounded-md px-2 py-1.5 text-start text-sm outline-none data-highlighted:bg-muted data-highlighted:text-foreground hover:bg-muted"
+                  onClick={() => {
+                    onCreateValue?.(trimmedQuery);
+                  }}
+                >
+                  <span dir="auto">
+                    {createLabel?.(trimmedQuery) ??
+                      `Use "${trimmedQuery}"`}
+                  </span>
+                </button>
+              ) : (
+                <span className="block px-2 py-1.5 text-sm text-muted-foreground">
+                  {emptyLabel ?? "No results"}
+                </span>
+              )}
             </ComboboxPrimitive.Empty>
             <ComboboxPrimitive.List className="max-h-64 overflow-auto">
               {(item: string) => (
@@ -75,7 +137,9 @@ export function Combobox({
                   data-slot="combobox-item"
                   className="flex w-full cursor-default items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none data-highlighted:bg-muted data-highlighted:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50"
                 >
-                  <span className="truncate">{labelByValue.get(item) ?? item}</span>
+                  <span dir="auto" className="truncate">
+                    {labelByValue.get(item) ?? item}
+                  </span>
                   <ComboboxPrimitive.ItemIndicator className="shrink-0">
                     <CheckIcon className="size-4" />
                   </ComboboxPrimitive.ItemIndicator>

@@ -34,9 +34,6 @@ public class Student extends BaseAuditableEntity {
     @JoinColumn(name = "mosque_id", nullable = false)
     private Mosque mosque;
 
-    @Column(name = "national_id", length = 50)
-    private String nationalId;
-
     @Column(name = "medical_notes", columnDefinition = "TEXT")
     private String medicalNotes;
 

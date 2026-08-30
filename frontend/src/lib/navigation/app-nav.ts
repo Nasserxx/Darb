@@ -18,6 +18,12 @@ import {
 
 import type { UserRole } from "@/lib/types/api.ts";
 
+/** ponytail: flip to true to show payments nav + screen */
+export const PAYMENTS_UI_ENABLED = false;
+
+/** ponytail: flip to true to show messages nav + screen */
+export const MESSAGES_UI_ENABLED = false;
+
 export type NavItem = {
   id: string;
   labelKey: string;
@@ -102,21 +108,24 @@ export const APP_NAV_ITEMS: NavItem[] = [
     labelKey: "nav.messages",
     href: "/messages",
     icon: MessageSquare,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
+    roles: MESSAGES_UI_ENABLED
+      ? ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"]
+      : [],
   },
   {
     id: "notifications",
     labelKey: "nav.notifications",
     href: "/notifications",
     icon: Bell,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN", "TEACHER", "STUDENT", "PARENT"],
+    // chrome: AppShell NotificationsBell
+    roles: [],
   },
   {
     id: "payments",
     labelKey: "nav.payments",
     href: "/payments",
     icon: CreditCard,
-    roles: ["SUPER_ADMIN", "MOSQUE_ADMIN"],
+    roles: PAYMENTS_UI_ENABLED ? ["SUPER_ADMIN", "MOSQUE_ADMIN"] : [],
   },
   {
     id: "reports",
@@ -149,7 +158,8 @@ export function getNavItemsForRole(role: string): NavItem[] {
 export function mosqueNavMeta(role: string): { labelKey: string; icon: LucideIcon } {
   const normalized = role.toUpperCase().replace(/-/g, "_");
   if (normalized === "MOSQUE_ADMIN") {
-    return { labelKey: "nav.mosqueSettings", icon: Settings };
+    // ponytail: was Settings via mosqueSettings; Mosques label matches SA
+    return { labelKey: "nav.mosques", icon: Landmark };
   }
   return { labelKey: "nav.mosques", icon: Landmark };
 }

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { DataTable } from "@/components/shared/data-table.tsx";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CircleFormDialog } from "@/features/circles/components/circle-form-dialog.tsx";
@@ -30,7 +31,7 @@ type CirclesTableProps = {
 
 export function CirclesTable({ canWrite, circleIds }: CirclesTableProps) {
   const { t } = useTranslation("app");
-  const { params, setPage } = usePagination();
+  const { params, setPage, setSize, setFilter } = usePagination();
   const { data, isLoading } = useCircles(circleIds ? { page: 0, size: 500 } : params);
   const deleteMutation = useDeleteCircle();
   const [formOpen, setFormOpen] = useState(false);
@@ -56,10 +57,23 @@ export function CirclesTable({ canWrite, circleIds }: CirclesTableProps) {
 
   return (
     <>
+      {!circleIds ? (
+        <SuperAdminMosqueScopeBar
+          mosqueId={params.mosqueId}
+          q={params.q}
+          nameFilter={{
+            label: t("superAdminScope.filterHalaqaName"),
+            placeholder: t("superAdminScope.filterHalaqaNamePlaceholder"),
+          }}
+          onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
+        />
+      ) : null}
       <DataTable
         data={filteredData}
         isLoading={isLoading}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
         columns={[
           {
             id: "name",
@@ -108,6 +122,7 @@ export function CirclesTable({ canWrite, circleIds }: CirclesTableProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={row.status === "ENDED"}
                         onClick={() => {
                           setEditing(row);
                           setFormOpen(true);
@@ -119,6 +134,7 @@ export function CirclesTable({ canWrite, circleIds }: CirclesTableProps) {
                         variant="ghost"
                         size="sm"
                         className="text-destructive"
+                        disabled={row.status === "ENDED"}
                         onClick={() => setDeleting(row)}
                       >
                         {t("actions.delete")}

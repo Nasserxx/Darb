@@ -23,10 +23,6 @@ public class StudentCreateRequest {
     @Schema(description = "Full name of the student")
     private String fullName;
 
-    @Size(max = 50)
-    @Schema(description = "National ID number", example = "1098765432")
-    private String nationalId;
-
     @Schema(description = "Medical notes about the student")
     private String medicalNotes;
 

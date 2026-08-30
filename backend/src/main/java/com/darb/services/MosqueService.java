@@ -17,12 +17,10 @@ import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ForbiddenException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.MosqueAdminRepository;
-import com.darb.repositories.MosqueMemberJoinRequestRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.ParentStudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
-import com.darb.entities.enums.JoinRequestStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -57,10 +55,10 @@ public class MosqueService {
 
     private final MosqueRepository mosqueRepository;
     private final MosqueAdminRepository mosqueAdminRepository;
-    private final MosqueMemberJoinRequestRepository joinRequestRepository;
     private final ParentStudentRepository parentStudentRepository;
     private final UserRepository userRepository;
     private final MosqueAccessService mosqueAccessService;
+    private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
     public Page<MosqueResponse> findAll(UUID callerId, String q, String country, String city, Pageable pageable) {
@@ -88,6 +86,18 @@ public class MosqueService {
             return Page.empty(pageable);
         }
         return mosqueRepository.findByIsActiveTrueAndIdIn(List.of(mosqueId), pageable).map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> listCities(String country, boolean activeOnly) {
+        if (!StringUtils.hasText(country)) {
+            throw new BadRequestException("Invalid country code: " + country);
+        }
+        String normalized = country.trim().toUpperCase(Locale.ROOT);
+        if (!normalized.matches("^[A-Z]{2}$")) {
+            throw new BadRequestException("Invalid country code: " + country);
+        }
+        return mosqueRepository.findDistinctCitiesByCountry(normalized, activeOnly);
     }
 
     private Specification<Mosque> buildFilterSpec(String q, String country, String city) {
@@ -153,9 +163,7 @@ public class MosqueService {
         if (user.getRole() != UserRole.TEACHER && user.getRole() != UserRole.STUDENT) {
             throw new ForbiddenException("Only teachers and students can search mosques");
         }
-        if (joinRequestRepository.existsByUserIdAndStatus(userId, JoinRequestStatus.PENDING)) {
-            throw new ForbiddenException("You already have a pending join request");
-        }
+        // ponytail: pending is per mosque+role now; search stays open so users can find a second mosque
 
         Specification<Mosque> spec = buildFilterSpec(q, country, city)
                 .and((root, query, cb) -> cb.isTrue(root.get("isActive")));
@@ -292,11 +300,23 @@ public class MosqueService {
         Mosque mosque = mosqueRepository.findActiveByAdminInviteCode(normalizedCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Mosque", "inviteCode", normalizedCode));
 
-        if (mosqueAdminRepository.existsByUserIdAndMosqueId(userId, mosque.getId())) {
+        if (mosqueAdminRepository.existsByUserIdAndMosqueIdAndIsActiveTrue(userId, mosque.getId())) {
             throw new ForbiddenException("You are already assigned to this mosque");
         }
 
-        MosqueAdmin mosqueAdmin = createMosqueAdmin(user, mosque, user, AdminPermission.MANAGE_TEACHERS, false);
+        MosqueAdmin mosqueAdmin = mosqueAdminRepository
+                .findByUserIdAndMosqueId(userId, mosque.getId())
+                .orElse(null);
+        if (mosqueAdmin != null) {
+            mosqueAdmin.setPermission(AdminPermission.MANAGE_TEACHERS);
+            mosqueAdmin.setIsPrimaryAdmin(false);
+            mosqueAdmin.setAssignedAt(Instant.now());
+            mosqueAdmin.setAssignedBy(user);
+            mosqueAdmin.setIsActive(true);
+            mosqueAdmin.setLeftAt(null);
+        } else {
+            mosqueAdmin = createMosqueAdmin(user, mosque, user, AdminPermission.MANAGE_TEACHERS, false);
+        }
         mosqueAdmin = mosqueAdminRepository.save(mosqueAdmin);
 
         return MosqueOnboardResponse.builder()
@@ -351,8 +371,18 @@ public class MosqueService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id, String auditReasonHeader, String auditReasonBody) {
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
         Mosque mosque = findEntityOrThrow(id);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    mosque.getId(),
+                    "MOSQUE_DEACTIVATE",
+                    auditReason,
+                    "Mosque",
+                    mosque.getId());
+        }
         mosque.setIsActive(false);
         mosqueRepository.save(mosque);
     }
@@ -391,6 +421,7 @@ public class MosqueService {
                 .isPrimaryAdmin(isPrimaryAdmin)
                 .assignedAt(Instant.now())
                 .assignedBy(assignedBy)
+                .isActive(true)
                 .build();
     }
 

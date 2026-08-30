@@ -1,5 +1,8 @@
 package com.darb.controllers.v1;
 
+import com.darb.repositories.StudentRepository;
+import com.darb.repositories.TeacherRepository;
+import com.darb.repositories.ParentStudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.support.PostgresIntegrationTestBase;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,15 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private ParentStudentRepository parentStudentRepository;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
 
     @Test
     void mosqueAdmin_cannotGetAttendanceFromOtherMosque() throws Exception {
@@ -401,40 +413,13 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
     }
 
     private String createStudent(String adminToken, String userId, String mosqueId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/students")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "userId": "%s",
-                                  "mosqueId": "%s"
-                                }
-                                """.formatted(userId, mosqueId)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return com.jayway.jsonpath.JsonPath.read(
-                result.getResponse().getContentAsString(),
-                "$.data.id");
+        return com.darb.support.MembershipFixtures.seatStudent(
+                mockMvc, userRepository, studentRepository, adminToken, userId, mosqueId, PASSWORD);
     }
 
     private String createTeacher(String adminToken, String userId, String mosqueId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/teachers")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "userId": "%s",
-                                  "mosqueId": "%s",
-                                  "specialization": "Hifz"
-                                }
-                                """.formatted(userId, mosqueId)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return com.jayway.jsonpath.JsonPath.read(
-                result.getResponse().getContentAsString(),
-                "$.data.id");
+        return com.darb.support.MembershipFixtures.seatTeacher(
+                mockMvc, userRepository, teacherRepository, adminToken, userId, mosqueId, PASSWORD);
     }
 
     private String createCircle(String adminToken, String mosqueId, String teacherId, String name) throws Exception {
@@ -544,9 +529,17 @@ class FindByIdAccessIntegrationTest extends PostgresIntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        return com.jayway.jsonpath.JsonPath.read(
+        String requestId = com.jayway.jsonpath.JsonPath.read(
                 result.getResponse().getContentAsString(),
                 "$.data.id");
+        var parent = userRepository.findById(java.util.UUID.fromString(parentUserId)).orElseThrow();
+        com.darb.support.MembershipFixtures.acceptParentInvite(mockMvc, parent.getEmail(), PASSWORD, requestId);
+        return parentStudentRepository.findByParentId(parent.getId()).stream()
+                .filter(link -> link.getStudent().getId().toString().equals(studentId))
+                .findFirst()
+                .orElseThrow()
+                .getId()
+                .toString();
     }
 
     private String createGoal(String adminToken, String studentId, String circleId) throws Exception {

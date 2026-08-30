@@ -3,6 +3,7 @@ import {
   fetchPage,
   mutateData,
 } from "@/lib/api/pagination.ts";
+import { withAuditReason } from "@/lib/api/audit-reason.ts";
 import type { PageParams } from "@/lib/types/api.ts";
 import type {
   EnrollmentCreateRequest,
@@ -22,15 +23,21 @@ export const enrollmentsApi = {
   getById: (id: string) =>
     fetchData<EnrollmentResponse>(`${BASE_PATH}/${id}`),
 
-  create: (body: EnrollmentCreateRequest) =>
+  create: (body: EnrollmentCreateRequest, auditReason?: string) =>
     mutateData<EnrollmentResponse>(BASE_PATH, {
       method: "POST",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 
-  update: (id: string, body: EnrollmentUpdateRequest) =>
+  update: (id: string, body: EnrollmentUpdateRequest, auditReason?: string) =>
     mutateData<EnrollmentResponse>(`${BASE_PATH}/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 };

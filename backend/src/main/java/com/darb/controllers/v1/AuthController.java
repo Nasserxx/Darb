@@ -104,4 +104,23 @@ public class AuthController {
                 .message("Password changed successfully")
                 .build());
     }
+
+    @PostMapping("/logout")
+    @Operation(
+            summary = "Logout",
+            description = "Revokes all refresh tokens for the authenticated user.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Logged out successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated", content = @Content)
+    })
+    public ResponseEntity<ApiResponse<Void>> logout(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        authService.logout(userId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Logged out successfully")
+                .build());
+    }
 }

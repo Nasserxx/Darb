@@ -8,9 +8,12 @@ export {
   useUpdateParentStudent,
 } from "./hooks/index.ts";
 export {
+  PARENT_RELATIONSHIPS,
   parentStudentCreateSchema,
+  parentStudentFormSchema,
   parentStudentUpdateSchema,
   type ParentStudentCreateFormValues,
+  type ParentStudentFormValues,
   type ParentStudentUpdateFormValues,
 } from "./schemas/parent-student.schema.ts";
 export type {

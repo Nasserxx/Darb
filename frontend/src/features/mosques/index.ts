@@ -1,9 +1,11 @@
 export { mosquesApi } from "./api/mosques-api.ts";
+export { CitySelect } from "./components/city-select.tsx";
 export {
   mosqueKeys,
   useCreateMosque,
   useDeleteMosque,
   useMosque,
+  useMosqueCities,
   useMosques,
   useUpdateMosque,
 } from "./hooks/index.ts";

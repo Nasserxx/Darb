@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client.ts";
+import { withAuditReason } from "@/lib/api/audit-reason.ts";
 import {
   fetchData,
   fetchPage,
@@ -22,22 +23,31 @@ export const mosqueAdminsApi = {
   getById: (id: string) =>
     fetchData<MosqueAdminResponse>(`${BASE_PATH}/${id}`),
 
-  create: (body: MosqueAdminCreateRequest) =>
+  create: (body: MosqueAdminCreateRequest, auditReason?: string) =>
     mutateData<MosqueAdminResponse>(BASE_PATH, {
       method: "POST",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 
-  update: (id: string, body: MosqueAdminUpdateRequest) =>
+  update: (id: string, body: MosqueAdminUpdateRequest, auditReason?: string) =>
     mutateData<MosqueAdminResponse>(`${BASE_PATH}/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     }),
 
-  delete: async (id: string): Promise<void> => {
+  delete: async (id: string, auditReason?: string): Promise<void> => {
     await apiFetch<ApiResponse<void>>(`${BASE_PATH}/${id}`, {
       method: "DELETE",
       auth: true,
+      ...(auditReason
+        ? { headers: withAuditReason(undefined, auditReason) }
+        : {}),
     });
   },
 
@@ -49,15 +59,25 @@ export const mosqueAdminsApi = {
     return response.data ?? [];
   },
 
-  approveJoinRequest: (id: string) =>
+  approveJoinRequest: (id: string, auditReason?: string) =>
     mutateData<MemberJoinRequestResponse>(
       `${BASE_PATH}/join-requests/${id}/approve`,
-      { method: "POST" },
+      {
+        method: "POST",
+        ...(auditReason
+          ? { headers: withAuditReason(undefined, auditReason) }
+          : {}),
+      },
     ),
 
-  rejectJoinRequest: (id: string) =>
+  rejectJoinRequest: (id: string, auditReason?: string) =>
     mutateData<MemberJoinRequestResponse>(
       `${BASE_PATH}/join-requests/${id}/reject`,
-      { method: "POST" },
+      {
+        method: "POST",
+        ...(auditReason
+          ? { headers: withAuditReason(undefined, auditReason) }
+          : {}),
+      },
     ),
 };

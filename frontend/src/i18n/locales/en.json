@@ -12,6 +12,7 @@
     "or": "or",
     "required": "Required",
     "optional": "Optional",
+    "toggleSidebar": "Toggle Sidebar",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "language": "Language",

@@ -25,9 +25,10 @@ import { Spinner } from "@/components/ui/spinner.tsx";
 import { AuthShell } from "@/features/auth/components/auth-shell.tsx";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import {
-  registerSchema,
+  createRegisterSchema,
   toRegisterRequestBody,
 } from "@/features/auth/schemas/register.schema.ts";
+import { AddressFields } from "@/features/users/components/address-fields.tsx";
 import type { z } from "zod";
 import {
   applyFieldErrors,
@@ -44,7 +45,7 @@ const REGISTER_ROLES = [
 
 const GENDERS = ["MALE", "FEMALE"] as const;
 
-type RegisterFormInput = z.input<typeof registerSchema>;
+type RegisterFormInput = z.input<ReturnType<typeof createRegisterSchema>>;
 
 export function RegisterForm() {
   const { t } = useTranslation("auth");
@@ -58,10 +59,14 @@ export function RegisterForm() {
     register,
     control,
     handleSubmit,
+    watch,
+    setValue,
     setError,
     formState: { errors },
   } = useForm<RegisterFormInput>({
-    resolver: zodResolver(registerSchema),
+    // ponytail: rebuild schema each validate so locale switch picks up messages
+    resolver: (values, context, options) =>
+      zodResolver(createRegisterSchema(t))(values, context, options),
     defaultValues: {
       fullName: "",
       email: "",
@@ -71,11 +76,17 @@ export function RegisterForm() {
       role: "student",
       gender: undefined,
       dateOfBirth: "",
+      addressCountry: "",
+      city: "",
+      addressStreet: "",
+      addressHouseNumber: "",
+      addressPostalCode: "",
+      addressState: "",
     },
   });
 
   async function onSubmit(values: RegisterFormInput) {
-    const parsed = registerSchema.parse(values);
+    const parsed = createRegisterSchema(t).parse(values);
     const result = await registerUser(toRegisterRequestBody(parsed));
     if (result.ok) {
       toast.success(t("register.success"));
@@ -324,6 +335,15 @@ export function RegisterForm() {
               </FieldDescription>
             )}
           </Field>
+
+          <AddressFields
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            idPrefix="register"
+            defaultOpen={false}
+          />
         </FieldGroup>
 
         <Button type="submit" disabled={isLoading} className="w-full">

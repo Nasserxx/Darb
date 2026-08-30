@@ -41,22 +41,31 @@ public class AchievementService {
     @Transactional(readOnly = true)
     public AchievementResponse findById(UUID callerId, UUID id) {
         Achievement achievement = findEntityOrThrow(id);
-        mosqueAccessService.assertCanAccessStudent(callerId, achievement.getStudent().getId());
+        UUID authorId = achievement.getAwardedBy().getId();
+        if (!authorId.equals(callerId)) {
+            mosqueAccessService.assertCanAccessStudent(callerId, achievement.getStudent().getId());
+        }
         return toResponse(achievement);
     }
 
     @Transactional(readOnly = true)
-    public Page<AchievementResponse> findByStudentId(UUID studentId, Pageable pageable) {
+    public Page<AchievementResponse> findByStudentId(UUID callerId, UUID studentId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessStudent(callerId, studentId);
         return achievementRepository.findByStudentId(studentId, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<AchievementResponse> findByMosqueId(UUID mosqueId, Pageable pageable) {
+    public Page<AchievementResponse> findByMosqueId(UUID callerId, UUID mosqueId, Pageable pageable) {
+        mosqueAccessService.assertCanAccessMosque(callerId, mosqueId);
         return achievementRepository.findByMosqueId(mosqueId, pageable).map(this::toResponse);
     }
 
     @Transactional
-    public AchievementResponse create(AchievementCreateRequest request) {
+    public AchievementResponse create(UUID callerId, AchievementCreateRequest request) {
+        mosqueAccessService.assertCanMutateStudent(callerId, request.getStudentId());
+        if (request.getMosqueId() != null) {
+            mosqueAccessService.assertCanAccessMosque(callerId, request.getMosqueId());
+        }
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", request.getStudentId()));
         Mosque mosque = mosqueRepository.findById(request.getMosqueId())
@@ -79,8 +88,9 @@ public class AchievementService {
     }
 
     @Transactional
-    public AchievementResponse update(UUID id, AchievementUpdateRequest request) {
+    public AchievementResponse update(UUID callerId, UUID id, AchievementUpdateRequest request) {
         Achievement achievement = findEntityOrThrow(id);
+        mosqueAccessService.assertCanMutateStudent(callerId, achievement.getStudent().getId());
 
         if (request.getTitle() != null) {
             achievement.setTitle(request.getTitle());
@@ -96,7 +106,9 @@ public class AchievementService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID callerId, UUID id) {
+        Achievement achievement = findEntityOrThrow(id);
+        mosqueAccessService.assertCanMutateStudent(callerId, achievement.getStudent().getId());
         achievementRepository.deleteById(id);
     }
 

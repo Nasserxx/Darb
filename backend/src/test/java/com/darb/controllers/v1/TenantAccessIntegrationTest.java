@@ -1,5 +1,6 @@
 package com.darb.controllers.v1;
 
+import com.darb.repositories.StudentRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.support.PostgresIntegrationTestBase;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,8 +33,11 @@ class TenantAccessIntegrationTest extends PostgresIntegrationTestBase {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private StudentRepository studentRepository;
+
     @Test
-    void mosqueAdmin_cannotCreateStudentInOtherMosque() throws Exception {
+    void mosqueAdmin_createStudent_ignoresForeignMosqueId() throws Exception {
         String adminAEmail = "admin-a-create-tenant@test.darb";
         String adminBEmail = "admin-b-create-tenant@test.darb";
         registerMosqueAdmin(adminAEmail);
@@ -39,7 +46,7 @@ class TenantAccessIntegrationTest extends PostgresIntegrationTestBase {
         String tokenA = login(adminAEmail);
         String tokenB = login(adminBEmail);
 
-        onboardMosque(tokenA, "Mosque Alpha Create");
+        String mosqueAId = onboardMosque(tokenA, "Mosque Alpha Create");
         String mosqueBId = onboardMosque(tokenB, "Mosque Beta Create");
 
         registerStudent("student-create-tenant@test.darb");
@@ -54,10 +61,47 @@ class TenantAccessIntegrationTest extends PostgresIntegrationTestBase {
                                   "mosqueId": "%s"
                                 }
                                 """.formatted(studentUserId, mosqueBId)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.success").value(false));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.mosqueId").value(mosqueAId))
+                .andExpect(jsonPath("$.data.direction").value("ADMIN_INVITE"));
 
-        createStudent(tokenB, studentUserId, mosqueBId);
+        assertThat(studentRepository.existsByUserIdAndMosqueId(
+                UUID.fromString(studentUserId), UUID.fromString(mosqueBId))).isFalse();
+    }
+
+    @Test
+    void mosqueAdmin_provisionStudent_ignoresForeignMosqueId() throws Exception {
+        String adminAEmail = "admin-a-prov-tenant@test.darb";
+        String adminBEmail = "admin-b-prov-tenant@test.darb";
+        registerMosqueAdmin(adminAEmail);
+        registerMosqueAdmin(adminBEmail);
+
+        String tokenA = login(adminAEmail);
+        String tokenB = login(adminBEmail);
+
+        String mosqueAId = onboardMosque(tokenA, "Mosque Alpha Prov");
+        String mosqueBId = onboardMosque(tokenB, "Mosque Beta Prov");
+
+        String email = "prov-ignore-mosque-" + UUID.randomUUID() + "@test.darb";
+        mockMvc.perform(post("/api/v1/students/provision")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mosqueId": "%s",
+                                  "fullName": "Prov Ignore Mosque",
+                                  "email": "%s",
+                                  "password": "%s"
+                                }
+                                """.formatted(mosqueBId, email, PASSWORD)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.mosqueId").value(mosqueAId));
+
+        UUID userId = userRepository.findByEmail(email).orElseThrow().getId();
+        assertThat(studentRepository.existsByUserIdAndMosqueId(userId, UUID.fromString(mosqueAId))).isTrue();
+        assertThat(studentRepository.existsByUserIdAndMosqueId(userId, UUID.fromString(mosqueBId))).isFalse();
     }
 
     @Test
@@ -196,20 +240,7 @@ class TenantAccessIntegrationTest extends PostgresIntegrationTestBase {
     }
 
     private String createStudent(String adminToken, String userId, String mosqueId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/students")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "userId": "%s",
-                                  "mosqueId": "%s"
-                                }
-                                """.formatted(userId, mosqueId)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return com.jayway.jsonpath.JsonPath.read(
-                result.getResponse().getContentAsString(),
-                "$.data.id");
+        return com.darb.support.MembershipFixtures.seatStudent(
+                mockMvc, userRepository, studentRepository, adminToken, userId, mosqueId, PASSWORD);
     }
 }

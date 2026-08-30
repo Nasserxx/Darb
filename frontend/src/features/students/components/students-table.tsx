@@ -5,8 +5,9 @@ import { toast } from "sonner";
 
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog.tsx";
 import { DataTable } from "@/components/shared/data-table.tsx";
-import { Badge } from "@/components/ui/badge";
+import { SuperAdminMosqueScopeBar } from "@/components/shared/super-admin-mosque-scope-bar.tsx";
 import { Button } from "@/components/ui/button";
+import { EnrollmentStatusBadge } from "@/features/enrollments/components/enrollment-status-badge.tsx";
 import { StudentFormDialog } from "@/features/students/components/student-form-dialog.tsx";
 import {
   useDeleteStudent,
@@ -26,7 +27,7 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
   const { t } = useTranslation("app");
   const { locale } = useParams<{ locale: string }>();
   const localePrefix = locale ?? DEFAULT_LOCALE;
-  const { params, setPage } = usePagination();
+  const { params, setPage, setSize, setFilter } = usePagination();
   const { data, isLoading } = useStudents(params);
   const deleteMutation = useDeleteStudent();
   const [formOpen, setFormOpen] = useState(false);
@@ -46,10 +47,21 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
 
   return (
     <>
+      <SuperAdminMosqueScopeBar
+        mosqueId={params.mosqueId}
+        q={params.q}
+        nameFilter={{
+          label: t("superAdminScope.filterStudentName"),
+          placeholder: t("superAdminScope.filterStudentNamePlaceholder"),
+        }}
+        onApply={({ mosqueId, q }) => setFilter({ mosqueId, q })}
+      />
       <DataTable
         data={data}
         isLoading={isLoading}
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
         columns={[
           {
             id: "id",
@@ -71,11 +83,7 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
           {
             id: "status",
             header: t("students.status"),
-            cell: (row) => (
-              <Badge variant="outline">
-                {t(`enums.enrollmentStatus.${row.status}`)}
-              </Badge>
-            ),
+            cell: (row) => <EnrollmentStatusBadge status={row.status} />,
           },
           {
             id: "absences",
@@ -93,6 +101,8 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        // ponytail: Former = WITHDRAWN (no isActive on StudentResponse)
+                        disabled={row.status === "WITHDRAWN"}
                         onClick={() => {
                           setEditing(row);
                           setFormOpen(true);
@@ -104,6 +114,7 @@ export function StudentsTable({ canWrite }: StudentsTableProps) {
                         variant="ghost"
                         size="sm"
                         className="text-destructive"
+                        disabled={row.status === "WITHDRAWN"}
                         onClick={() => setDeleting(row)}
                       >
                         {t("actions.delete")}

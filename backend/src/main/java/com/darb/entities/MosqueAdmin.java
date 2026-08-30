@@ -46,4 +46,10 @@ public class MosqueAdmin extends BaseAuditableEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "assigned_by", nullable = false)
     private User assignedBy;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
+
+    @Column(name = "left_at")
+    private Instant leftAt;
 }

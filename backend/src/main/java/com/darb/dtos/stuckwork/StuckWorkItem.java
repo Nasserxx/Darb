@@ -1,5 +1,6 @@
 package com.darb.dtos.stuckwork;
 
+import com.darb.entities.enums.JoinRequestDirection;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class StuckWorkItem {
 
     private StuckWorkItemKind kind;
+    private JoinRequestDirection direction;
     private UUID mosqueId;
     private String mosqueName;
     private UUID resourceId;

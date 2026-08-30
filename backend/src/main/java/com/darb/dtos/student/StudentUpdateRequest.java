@@ -12,10 +12,6 @@ public class StudentUpdateRequest {
     @Schema(description = "Full name of the student")
     private String fullName;
 
-    @Size(max = 50)
-    @Schema(description = "National ID number")
-    private String nationalId;
-
     @Schema(description = "Medical notes about the student")
     private String medicalNotes;
 

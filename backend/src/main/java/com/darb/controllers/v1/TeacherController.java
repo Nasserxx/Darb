@@ -4,7 +4,9 @@ import com.darb.dtos.common.ApiResponse;
 import com.darb.dtos.common.InviteCodeJoinRequest;
 import com.darb.dtos.common.MosqueIdRequest;
 import com.darb.dtos.common.PageResponse;
+import com.darb.dtos.mosque.MemberJoinRequestResponse;
 import com.darb.dtos.teacher.TeacherCreateRequest;
+import com.darb.dtos.teacher.TeacherProvisionRequest;
 import com.darb.dtos.teacher.TeacherResponse;
 import com.darb.dtos.teacher.TeacherUpdateRequest;
 import com.darb.services.TeacherService;
@@ -46,8 +48,11 @@ public class TeacherController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<TeacherResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<TeacherResponse> page = teacherService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<TeacherResponse> page = teacherService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<TeacherResponse>>builder()
                 .success(true)
                 .message("Teachers retrieved successfully")
@@ -123,25 +128,39 @@ public class TeacherController {
                         .build());
     }
 
+    @PostMapping("/provision")
+    @Operation(summary = "Provision a new teacher login and seat immediately")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
+    public ResponseEntity<ApiResponse<TeacherResponse>> provision(
+            Authentication authentication,
+            @Valid @RequestBody TeacherProvisionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.<TeacherResponse>builder()
+                        .success(true)
+                        .message("Teacher provisioned successfully")
+                        .data(teacherService.provision((UUID) authentication.getPrincipal(), request))
+                        .build());
+    }
+
     @PostMapping
     @Operation(
-            summary = "Create a teacher profile",
-            description = "Creates a new teacher profile linked to an existing user and mosque. Accessible by SUPER_ADMIN and MOSQUE_ADMIN."
+            summary = "Invite an existing user as a teacher",
+            description = "Creates an ADMIN_INVITE. Membership is created only after the user accepts."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Teacher created successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Invitation created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request body or validation errors"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
-    public ResponseEntity<ApiResponse<TeacherResponse>> create(
+    public ResponseEntity<ApiResponse<MemberJoinRequestResponse>> create(
             Authentication authentication,
             @Valid @RequestBody TeacherCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.<TeacherResponse>builder()
+                .body(ApiResponse.<MemberJoinRequestResponse>builder()
                         .success(true)
-                        .message("Teacher created successfully")
+                        .message("Invitation sent successfully")
                         .data(teacherService.create((UUID) authentication.getPrincipal(), request))
                         .build());
     }

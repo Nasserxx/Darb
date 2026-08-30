@@ -2,6 +2,13 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -12,6 +19,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PageResponse } from "@/lib/types/api.ts";
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [20, 100];
+
+function getVisiblePageNumbers(currentPage: number, totalPages: number): number[] {
+  if (totalPages <= 0) return [];
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const current = currentPage + 1;
+  const pages = new Set<number>([1, totalPages]);
+  for (let i = current - 1; i <= current + 1; i++) {
+    if (i >= 1 && i <= totalPages) pages.add(i);
+  }
+  return [...pages].sort((a, b) => a - b);
+}
 
 type Column<T> = {
   id: string;
@@ -26,6 +49,9 @@ type DataTableProps<T> = {
   isLoading?: boolean;
   emptyMessage?: string;
   onPageChange?: (page: number) => void;
+  pageSize?: number;
+  onSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
 };
 
 export function DataTable<T>({
@@ -34,6 +60,9 @@ export function DataTable<T>({
   isLoading,
   emptyMessage,
   onPageChange,
+  pageSize,
+  onSizeChange,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
 }: DataTableProps<T>) {
   const { t } = useTranslation("app");
   const rows = data?.content ?? [];
@@ -55,6 +84,12 @@ export function DataTable<T>({
       </p>
     );
   }
+
+  const showFooter =
+    data && onPageChange && (data.totalPages > 1 || onSizeChange);
+  const visiblePages = data
+    ? getVisiblePageNumbers(data.pageNumber, data.totalPages)
+    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,33 +117,85 @@ export function DataTable<T>({
           </TableBody>
         </Table>
       </div>
-      {data && data.totalPages > 1 && onPageChange ? (
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            {t("table.pageInfo", {
-              page: data.pageNumber + 1,
-              total: data.totalPages,
-              count: data.totalElements,
-            })}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.pageNumber <= 0}
-              onClick={() => onPageChange(data.pageNumber - 1)}
-            >
-              {t("table.previous")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={data.last}
-              onClick={() => onPageChange(data.pageNumber + 1)}
-            >
-              {t("table.next")}
-            </Button>
+      {showFooter ? (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              {t("table.pageInfo", {
+                page: data.pageNumber + 1,
+                total: data.totalPages,
+                count: data.totalElements,
+              })}
+            </p>
+            {onSizeChange ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {t("table.rowsPerPage")}
+                </span>
+                <Select
+                  value={String(pageSize ?? pageSizeOptions[0])}
+                  onValueChange={(value) => onSizeChange(Number(value))}
+                >
+                  <SelectTrigger className="h-8 w-[4.5rem]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </div>
+          {data.totalPages > 1 ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={data.pageNumber <= 0}
+                onClick={() => onPageChange(data.pageNumber - 1)}
+              >
+                {t("table.previous")}
+              </Button>
+              {visiblePages.flatMap((page, index) => {
+                const items: ReactNode[] = [];
+                if (index > 0 && visiblePages[index - 1]! < page - 1) {
+                  items.push(
+                    <span
+                      key={`ellipsis-${page}`}
+                      className="px-1 text-sm text-muted-foreground"
+                      aria-hidden
+                    >
+                      …
+                    </span>,
+                  );
+                }
+                items.push(
+                  <Button
+                    key={page}
+                    variant={page === data.pageNumber + 1 ? "default" : "outline"}
+                    size="sm"
+                    className="min-w-8 px-2"
+                    onClick={() => onPageChange(page - 1)}
+                  >
+                    {page}
+                  </Button>,
+                );
+                return items;
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={data.last}
+                onClick={() => onPageChange(data.pageNumber + 1)}
+              >
+                {t("table.next")}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

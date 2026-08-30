@@ -5,6 +5,7 @@ import type { PageParams } from "@/lib/types/api.ts";
 import { teachersApi } from "../api/teachers-api.ts";
 import type {
   TeacherCreateRequest,
+  TeacherProvisionRequest,
   TeacherUpdateRequest,
 } from "../types/index.ts";
 import { teacherKeys } from "./query-keys.ts";
@@ -29,6 +30,17 @@ export function useCreateTeacher() {
 
   return useMutation({
     mutationFn: (body: TeacherCreateRequest) => teachersApi.create(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: teacherKeys.lists() });
+    },
+  });
+}
+
+export function useProvisionTeacher() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: TeacherProvisionRequest) => teachersApi.provision(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: teacherKeys.lists() });
     },

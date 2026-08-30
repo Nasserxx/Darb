@@ -19,7 +19,7 @@ import { AuthShell } from "@/features/auth/components/auth-shell.tsx";
 import { useAuth } from "@/features/auth/hooks/use-auth.ts";
 import { getUserSession } from "@/features/auth/session/storage.ts";
 import {
-  loginSchema,
+  createLoginSchema,
   type LoginFormValues,
 } from "@/features/auth/schemas/login.schema.ts";
 import {
@@ -49,7 +49,9 @@ export function LoginForm() {
     setError,
     formState: { errors },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    // ponytail: rebuild schema each validate so locale switch picks up messages
+    resolver: (values, context, options) =>
+      zodResolver(createLoginSchema(t))(values, context, options),
     defaultValues: {
       email: searchParams.get("email") ?? "",
       password: "",

@@ -45,8 +45,11 @@ public class PaymentController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<PaymentResponse>>> findAll(
             Authentication authentication,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<PaymentResponse> page = paymentService.findAll((UUID) authentication.getPrincipal(), pageable);
+        Page<PaymentResponse> page = paymentService.findAll(
+                (UUID) authentication.getPrincipal(), pageable, mosqueId, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<PaymentResponse>>builder()
                 .success(true)
                 .message("Payments retrieved successfully")
@@ -64,15 +67,16 @@ public class PaymentController {
     @GetMapping("/{id}")
     @Operation(
             summary = "Get payment by ID",
-            description = "Retrieves a specific payment record by its unique identifier."
+            description = "Retrieves a specific payment record by its unique identifier. Accessible by SUPER_ADMIN and MOSQUE_ADMIN."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payment retrieved successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid UUID format"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Payment not found")
     })
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<PaymentResponse>> findById(
             Authentication authentication,
             @Parameter(description = "Payment UUID", required = true) @PathVariable UUID id) {
@@ -99,9 +103,10 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<PageResponse<PaymentResponse>>> findByMosque(
             Authentication authentication,
             @Parameter(description = "Mosque UUID", required = true) @PathVariable UUID mosqueId,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
         Page<PaymentResponse> page = paymentService.findByMosqueId(
-                (UUID) authentication.getPrincipal(), mosqueId, pageable);
+                (UUID) authentication.getPrincipal(), mosqueId, pageable, q);
         return ResponseEntity.ok(ApiResponse.<PageResponse<PaymentResponse>>builder()
                 .success(true)
                 .message("Mosque payments retrieved successfully")

@@ -19,6 +19,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, UUID>, J
     Page<Enrollment> findByStudentId(UUID studentId, Pageable pageable);
     List<Enrollment> findByCircleId(UUID circleId);
     List<Enrollment> findByStatus(EnrollmentStatus status);
+    long countByCircleIdAndStatus(UUID circleId, EnrollmentStatus status);
     boolean existsByStudentIdAndCircleId(UUID studentId, UUID circleId);
 
     @Lock(LockModeType.OPTIMISTIC)

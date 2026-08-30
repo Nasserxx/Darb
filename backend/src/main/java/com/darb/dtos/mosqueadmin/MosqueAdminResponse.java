@@ -44,4 +44,10 @@ public class MosqueAdminResponse {
 
     @Schema(description = "User ID who assigned this admin")
     private UUID assignedBy;
+
+    @Schema(description = "Whether this mosque admin assignment is active")
+    private Boolean isActive;
+
+    @Schema(description = "Timestamp when the admin left, if inactive")
+    private Instant leftAt;
 }

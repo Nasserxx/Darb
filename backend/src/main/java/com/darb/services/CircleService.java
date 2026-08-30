@@ -8,16 +8,19 @@ import com.darb.entities.Mosque;
 import com.darb.entities.Teacher;
 import com.darb.entities.enums.CircleStatus;
 import com.darb.entities.enums.UserRole;
+import com.darb.exceptions.BadRequestException;
 import com.darb.exceptions.ResourceNotFoundException;
 import com.darb.repositories.CircleRepository;
 import com.darb.repositories.MosqueRepository;
 import com.darb.repositories.TeacherRepository;
 import com.darb.repositories.UserRepository;
 import com.darb.security.MosqueAccessService;
+import com.darb.util.NameFilterSpecs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,9 +36,10 @@ public class CircleService {
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final MosqueAccessService mosqueAccessService;
+    private final OverrideAuditService overrideAuditService;
 
     @Transactional(readOnly = true)
-    public Page<CircleResponse> findAll(UUID callerId, Pageable pageable) {
+    public Page<CircleResponse> findAll(UUID callerId, Pageable pageable, UUID mosqueIdFilter, String q) {
         UserRole role = userRepository.findById(callerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", callerId))
                 .getRole();
@@ -48,12 +52,17 @@ public class CircleService {
                     .map(this::toResponse);
         }
 
-        return mosqueAccessService.pageForCaller(
-                callerId,
-                pageable,
-                mosqueId -> circleRepository.findByMosqueId(mosqueId, pageable),
-                circleRepository::findAll
-        ).map(this::toResponse);
+        mosqueAccessService.assertValidNameFilter(callerId, mosqueIdFilter, q);
+        if (mosqueAccessService.shouldReturnEmptyListPage(callerId)) {
+            return Page.empty(pageable);
+        }
+        UUID mosqueId = mosqueAccessService.resolveEffectiveMosqueIdForList(callerId, mosqueIdFilter);
+        Specification<Circle> spec = (root, query, cb) -> cb.conjunction();
+        if (mosqueId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("mosque").get("id"), mosqueId));
+        }
+        spec = NameFilterSpecs.and(spec, NameFilterSpecs.circleNameLike(q));
+        return circleRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -65,11 +74,12 @@ public class CircleService {
 
     @Transactional
     public CircleResponse create(UUID callerId, CircleCreateRequest request) {
-        Mosque mosque = mosqueRepository.findById(request.getMosqueId())
-                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", request.getMosqueId()));
-        mosqueAccessService.assertCanAccessMosque(callerId, mosque.getId());
+        UUID mosqueId = mosqueAccessService.resolveMosqueIdForAdminMutation(callerId, request.getMosqueId());
+        Mosque mosque = mosqueRepository.findById(mosqueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mosque", "id", mosqueId));
         Teacher teacher = teacherRepository.findById(request.getTeacherId())
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", request.getTeacherId()));
+        assertTeacherBelongsToMosque(teacher, mosqueId);
 
         Circle circle = Circle.builder()
                 .mosque(mosque)
@@ -133,11 +143,27 @@ public class CircleService {
     }
 
     @Transactional
-    public void delete(UUID callerId, UUID id) {
+    public void delete(UUID callerId, UUID id, String auditReasonHeader, String auditReasonBody) {
         Circle circle = findEntityOrThrow(id);
         mosqueAccessService.assertCanAccessMosque(callerId, circle.getMosque().getId());
+        String auditReason = overrideAuditService.gateSuperAdmin(callerId, auditReasonHeader, auditReasonBody);
+        if (auditReason != null) {
+            overrideAuditService.record(
+                    callerId,
+                    circle.getMosque().getId(),
+                    "CIRCLE_DEACTIVATE",
+                    auditReason,
+                    "Circle",
+                    circle.getId());
+        }
         circle.setStatus(CircleStatus.ENDED);
         circleRepository.save(circle);
+    }
+
+    private void assertTeacherBelongsToMosque(Teacher teacher, UUID resolvedMosqueId) {
+        if (!teacher.getMosque().getId().equals(resolvedMosqueId)) {
+            throw new BadRequestException("Teacher must belong to the same mosque");
+        }
     }
 
     private Circle findEntityOrThrow(UUID id) {

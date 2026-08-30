@@ -3,6 +3,7 @@ package com.darb.services;
 import com.darb.dtos.stuckwork.StuckWorkItem;
 import com.darb.dtos.stuckwork.StuckWorkItemKind;
 import com.darb.entities.MosqueMemberJoinRequest;
+import com.darb.entities.enums.JoinRequestDirection;
 import com.darb.entities.enums.JoinRequestStatus;
 import com.darb.repositories.MosqueMemberJoinRequestRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,12 +45,17 @@ public class StuckWorkService {
     private StuckWorkItem toPendingJoinItem(MosqueMemberJoinRequest request, int densityScore) {
         String userName = request.getUser().getFullName();
         String roleLabel = request.getRequestedRole().name().toLowerCase().replace('_', ' ');
+        JoinRequestDirection direction = request.getDirection();
+        String summary = direction == JoinRequestDirection.ADMIN_INVITE
+                ? "%s invited as %s".formatted(userName, roleLabel)
+                : "%s requested to join as %s".formatted(userName, roleLabel);
         return StuckWorkItem.builder()
                 .kind(StuckWorkItemKind.PENDING_JOIN)
+                .direction(direction)
                 .mosqueId(request.getMosque().getId())
                 .mosqueName(request.getMosque().getName())
                 .resourceId(request.getId())
-                .summary("%s requested to join as %s".formatted(userName, roleLabel))
+                .summary(summary)
                 .createdAt(request.getCreatedAt())
                 .densityScore(densityScore)
                 .build();

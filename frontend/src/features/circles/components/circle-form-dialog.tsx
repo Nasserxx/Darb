@@ -33,7 +33,7 @@ import {
 import type { CircleResponse } from "@/features/circles/types/index.ts";
 import { useMosques } from "@/features/mosques/hooks/use-mosques.ts";
 import { useTeachers } from "@/features/teachers/hooks/use-teachers.ts";
-import { useWorkspace } from "@/features/workspace/context/workspace-provider.tsx";
+import { useScopedMosqueForAdmin } from "@/features/workspace/hooks/use-scoped-mosque-for-admin.ts";
 import {
   applyFieldErrors,
   toMutationError,
@@ -59,12 +59,15 @@ type CircleFormDialogProps = {
 
 export function CircleFormDialog({ open, onOpenChange, circle }: CircleFormDialogProps) {
   const { t } = useTranslation("app");
-  const { mosqueId } = useWorkspace();
+  const { mosqueId, showMosqueField } = useScopedMosqueForAdmin();
   const isEdit = Boolean(circle);
   const createMutation = useCreateCircle();
   const updateMutation = useUpdateCircle();
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const { data: mosquesPage } = useMosques({ page: 0, size: 100 });
+  const { data: mosquesPage } = useMosques(
+    { page: 0, size: 100 },
+    { enabled: showMosqueField },
+  );
   const { data: teachersPage } = useTeachers({ page: 0, size: 500 });
 
   const createForm = useForm<CircleCreateFormValues>({
@@ -175,32 +178,34 @@ export function CircleFormDialog({ open, onOpenChange, circle }: CircleFormDialo
       <FieldGroup>
         {!isEdit ? (
           <>
-            <Field data-invalid={!!createForm.formState.errors.mosqueId}>
-              <FieldLabel>{t("circles.mosqueId")}</FieldLabel>
-              <Controller
-                name="mosqueId"
-                control={createForm.control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger aria-invalid={!!createForm.formState.errors.mosqueId}>
-                      <SelectValue placeholder={t("circles.selectMosque")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(mosquesPage?.content ?? []).map((mosque) => (
-                        <SelectItem key={mosque.id} value={mosque.id}>
-                          {mosque.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {createForm.formState.errors.mosqueId ? (
-                <FieldDescription className="text-destructive">
-                  {createForm.formState.errors.mosqueId.message}
-                </FieldDescription>
-              ) : null}
-            </Field>
+            {showMosqueField ? (
+              <Field data-invalid={!!createForm.formState.errors.mosqueId}>
+                <FieldLabel>{t("circles.mosqueId")}</FieldLabel>
+                <Controller
+                  name="mosqueId"
+                  control={createForm.control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger aria-invalid={!!createForm.formState.errors.mosqueId}>
+                        <SelectValue placeholder={t("circles.selectMosque")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(mosquesPage?.content ?? []).map((mosque) => (
+                          <SelectItem key={mosque.id} value={mosque.id}>
+                            {mosque.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {createForm.formState.errors.mosqueId ? (
+                  <FieldDescription className="text-destructive">
+                    {createForm.formState.errors.mosqueId.message}
+                  </FieldDescription>
+                ) : null}
+              </Field>
+            ) : null}
             <Field data-invalid={!!createForm.formState.errors.teacherId}>
               <FieldLabel>{t("circles.teacherId")}</FieldLabel>
               <Controller

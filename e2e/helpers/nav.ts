@@ -12,9 +12,6 @@ export const MOSQUE_ADMIN_SIDEBAR_LABELS = [
   "Enrollments",
   "Attendance",
   "Achievements",
-  "Messages",
-  "Notifications",
-  "Payments",
   "Reports",
   "Profile",
 ] as const;

@@ -1,0 +1,101 @@
+---
+description: Core engineering workflow, security gates, testing, and quality bar for every substantive change
+alwaysApply: true
+---
+
+# Development Standards & Quality Gates
+
+Applies to every substantive request. Skip only for greetings, thanks, or one-line factual questions.
+
+**Priority when principles conflict:** correctness → security → simplicity → maintainability → performance → extensibility. State every non-trivial tradeoff explicitly.
+
+## Principles
+
+- **KISS** — Simplest solution that fully meets the requirement. No abstractions unless they measurably reduce complexity.
+- **DRY** — Single source of truth for logic, schemas, validation. Tolerate duplication twice; refactor on the third. DRY applies to knowledge, not lines.
+- **YAGNI** — No features, configuration, or abstraction beyond the current task. No speculative design.
+- **Complexity** — Prefer O(1). Any non-O(1) hot-path operation must be justified.
+
+## Workflow
+
+### 1. Analyze before mutating
+
+Before editing any file or running multi-step commands:
+
+- Restate the goal and acceptance criteria in one sentence.
+- List impacted files, call sites, tests, and config.
+- Identify edge cases, failure modes, and security surface.
+- Check available Skills / existing utilities before reimplementing covered workflows.
+
+Do not start editing until these are answered.
+
+### 2. Plan the smallest safe change
+
+- Identify the smallest change that fully satisfies the request.
+- If the plan touches multiple files or layers, list the steps before executing.
+- Do not expand scope: no drive-by refactors, speculative improvements, cleanup, or unrequested features.
+
+### 3. Execute step by step
+
+- One logical change at a time; verify after each.
+- Follow the language's official style guide (Google Java Style, PEP 8, etc.).
+- Self-documenting names. No unexplained abbreviations or magic values — name every literal that carries meaning.
+- Comments explain **why**, not **what**. Delete a comment if the code makes it obvious.
+- Remove dead code you introduce (unused imports, variables, functions, types, dead files, duplicate utilities).
+- Update tests and docs when behavior changes.
+
+### 4. Verify before declaring done
+
+- Tests cover the changed behavior (see Testing gates below).
+- Code compiles / type-checks.
+- No unrelated files were modified.
+- State assumptions and tradeoffs in the response.
+- Self-check: simpler approach possible? assumptions unstated? anything speculative? edge cases unhandled? would this fail senior review?
+
+If the solution feels clever, it is probably wrong. Boring and explicit wins.
+
+## Quality gates
+
+**If any gate below fails, stop and fix before producing final output.**
+
+### Security (non-negotiable)
+
+- Validate and sanitize input at every trust boundary.
+- OWASP Top 10 compliance on user-facing surfaces.
+- Least privilege — never broaden roles or scopes to make a test pass.
+- Parameterized queries only. No raw query construction.
+- Zero secrets in code. Read from env / config only.
+- Fail closed. Error messages must not leak internals (stack traces, SQL, tokens).
+
+### Testing (mandatory for behavior changes)
+
+- Unit tests for business logic.
+- Integration tests for external boundaries (HTTP, DB, message broker).
+- Cover the happy path and at least one failure path.
+- Target >80% coverage on business logic; justify any dip.
+- Tests are production artifacts — same quality bar as the code.
+
+### Performance
+
+- Measure before optimizing. No speculative optimization.
+- For any non-trivial algorithm, state time complexity and whether it runs on a hot path.
+- Never trade correctness or security for micro-optimization.
+
+### Concurrency & distribution
+
+- No data races.
+- Retriable operations must be idempotent.
+- External calls need timeouts; add circuit-breaker / rate-limit where the call can cascade.
+- Document the consistency model for any distributed write.
+
+## Forbidden
+
+- Shipping commented-out code.
+- Leaving TODOs without a tracked issue reference.
+- Silent behavior changes (renaming a public API without noting it; changing defaults without noting it).
+
+## Policies
+
+**Clarification** — Ask only when proceeding risks incorrect behavior, a security vulnerability, or an irreversible architectural decision. Otherwise make the simplest safe assumption and state it.
+
+**Intellectual honesty** — Do not agree to be agreeable. If a premise is flawed, push back — surface hidden assumptions, missing constraints, tail risks, and stronger alternatives before implementing. Sycophancy is a bug.

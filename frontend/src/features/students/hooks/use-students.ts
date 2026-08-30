@@ -4,6 +4,7 @@ import type { PageParams } from "@/lib/types/api.ts";
 import { studentsApi } from "../api/students-api.ts";
 import type {
   StudentCreateRequest,
+  StudentProvisionRequest,
   StudentUpdateRequest,
 } from "../types/index.ts";
 import { studentKeys } from "./query-keys.ts";
@@ -28,6 +29,17 @@ export function useCreateStudent() {
 
   return useMutation({
     mutationFn: (body: StudentCreateRequest) => studentsApi.create(body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+    },
+  });
+}
+
+export function useProvisionStudent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: StudentProvisionRequest) => studentsApi.provision(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
     },

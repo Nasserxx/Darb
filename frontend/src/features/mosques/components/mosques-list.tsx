@@ -34,9 +34,9 @@ import { DEFAULT_LOCALE } from "@/i18n/index.ts";
 import { getCountryOptions } from "@/lib/countries.ts";
 import { normalizeApiRole } from "@/lib/navigation/app-nav.ts";
 import { usePagination } from "@/lib/hooks/use-pagination.ts";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value.ts";
 import { toMutationError } from "@/lib/errors/map-api-error.ts";
 
+import { CitySelect } from "./city-select.tsx";
 import { MosqueFormDialog } from "./mosque-form-dialog.tsx";
 import {
   useDeleteMosque,
@@ -67,33 +67,67 @@ function MosqueFilterToolbar({
   setFilter: (filter: { q?: string; country?: string; city?: string }) => void;
 }) {
   const { t, i18n } = useTranslation("app");
-  const [qInput, setQInput] = useState(q ?? "");
-  const [cityInput, setCityInput] = useState(city ?? "");
-  const debouncedQ = useDebouncedValue(qInput);
-  const debouncedCity = useDebouncedValue(cityInput);
+  const [draftQ, setDraftQ] = useState(q ?? "");
+  const [draftCountry, setDraftCountry] = useState(country ?? "");
+  const [draftCity, setDraftCity] = useState(city ?? "");
   const countryOptions = useMemo(
     () => getCountryOptions(i18n.language),
     [i18n.language],
   );
 
   useEffect(() => {
-    if ((debouncedQ || "") !== (q || "")) setFilter({ q: debouncedQ });
-  }, [debouncedQ, q, setFilter]);
+    setDraftQ(q ?? "");
+  }, [q]);
 
   useEffect(() => {
-    if ((debouncedCity || "") !== (city || "")) setFilter({ city: debouncedCity });
-  }, [debouncedCity, city, setFilter]);
+    setDraftCountry(country ?? "");
+  }, [country]);
 
-  const hasFilters = Boolean(q || country || city);
+  useEffect(() => {
+    setDraftCity(city ?? "");
+  }, [city]);
+
+  function handleSearch() {
+    setFilter({
+      q: draftQ.trim(),
+      country: draftCountry,
+      city: draftCity,
+    });
+  }
+
+  function clearAll() {
+    setDraftQ("");
+    setDraftCountry("");
+    setDraftCity("");
+    setFilter({ q: "", country: "", city: "" });
+  }
+
+  const appliedQ = q ?? "";
+  const appliedCountry = country ?? "";
+  const appliedCity = city ?? "";
+  const searchDisabled =
+    draftQ.trim() === appliedQ.trim() &&
+    draftCountry === appliedCountry &&
+    draftCity === appliedCity;
+  const hasFilters =
+    Boolean(q || country || city) ||
+    Boolean(draftQ || draftCountry || draftCity);
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <form
+      className="flex flex-wrap items-end gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!searchDisabled) handleSearch();
+      }}
+    >
       <Field className="w-64">
         <FieldLabel htmlFor="mosque-search">{t("mosques.name")}</FieldLabel>
         <Input
           id="mosque-search"
-          value={qInput}
-          onChange={(event) => setQInput(event.target.value)}
+          dir="auto"
+          value={draftQ}
+          onChange={(event) => setDraftQ(event.target.value)}
           placeholder={t("mosques.searchPlaceholder")}
         />
       </Field>
@@ -101,33 +135,35 @@ function MosqueFilterToolbar({
         <FieldLabel>{t("mosques.country")}</FieldLabel>
         <Combobox
           options={countryOptions}
-          value={country ?? null}
-          onValueChange={(value) => setFilter({ country: value ?? undefined })}
+          value={draftCountry || null}
+          onValueChange={(value) => {
+            setDraftCountry(value ?? "");
+            setDraftCity("");
+          }}
           placeholder={t("mosques.allCountries")}
         />
       </Field>
       <Field className="w-48">
         <FieldLabel htmlFor="mosque-city-filter">{t("mosques.city")}</FieldLabel>
-        <Input
+        <CitySelect
           id="mosque-city-filter"
-          value={cityInput}
-          onChange={(event) => setCityInput(event.target.value)}
+          country={draftCountry || undefined}
+          value={draftCity || null}
+          onValueChange={(value) => setDraftCity(value ?? "")}
+          mode="filter"
+          activeOnly={false}
           placeholder={t("mosques.filterCity")}
         />
       </Field>
+      <Button type="submit" variant="default" disabled={searchDisabled}>
+        {t("superAdminScope.search")}
+      </Button>
       {hasFilters ? (
-        <Button
-          variant="outline"
-          onClick={() => {
-            setQInput("");
-            setCityInput("");
-            setFilter({ q: "", country: "", city: "" });
-          }}
-        >
-          {t("mosques.clearFilters")}
+        <Button type="button" variant="outline" onClick={clearAll}>
+          {t("superAdminScope.clearAll")}
         </Button>
       ) : null}
-    </div>
+    </form>
   );
 }
 
@@ -135,7 +171,8 @@ function SuperAdminMosquesTable() {
   const { t } = useTranslation("app");
   const { locale } = useParams<{ locale: string }>();
   const localePrefix = locale ?? DEFAULT_LOCALE;
-  const { params, setPage, q, country, city, setFilter } = usePagination();
+  const { params, setPage, setSize, q, country, city, setFilter } =
+    usePagination();
   const { data, isLoading } = useMosques(params);
   const deleteMosque = useDeleteMosque();
   const reactivateMosque = useReactivateMosque();
@@ -273,6 +310,8 @@ function SuperAdminMosquesTable() {
             : t("mosques.empty")
         }
         onPageChange={setPage}
+        onSizeChange={setSize}
+        pageSize={params.size}
       />
 
       <MosqueFormDialog

@@ -2,8 +2,10 @@ package com.darb.controllers.v1;
 
 import com.darb.dtos.common.ApiResponse;
 import com.darb.dtos.common.PageResponse;
+import com.darb.dtos.user.UserPickerResponse;
 import com.darb.dtos.user.UserResponse;
 import com.darb.dtos.user.UserUpdateRequest;
+import com.darb.entities.enums.UserRole;
 import com.darb.services.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,12 +16,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -92,6 +97,78 @@ public class UserController {
                 .build());
     }
 
+    @GetMapping("/picker")
+    @Operation(
+            summary = "Pick users for assignment",
+            description = "Global user picker filtered by name, user address, and/or date of birth. "
+                    + "Omits street and contact fields. Accessible by SUPER_ADMIN, MOSQUE_ADMIN, TEACHER, and STUDENT."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Picker results retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Missing or invalid filter criteria"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<PageResponse<UserPickerResponse>>> pickUsers(
+            Authentication authentication,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateOfBirth,
+            @RequestParam(required = false) UUID mosqueId,
+            @RequestParam(required = false) UserRole role,
+            @PageableDefault(size = 20) Pageable pageable) {
+        UUID callerId = (UUID) authentication.getPrincipal();
+        Page<UserPickerResponse> page = userService.pickUsers(
+                callerId, q, country, state, city, dateOfBirth, mosqueId, role, pageable);
+        return ResponseEntity.ok(ApiResponse.<PageResponse<UserPickerResponse>>builder()
+                .success(true)
+                .message("Picker results retrieved successfully")
+                .data(PageResponse.<UserPickerResponse>builder()
+                        .content(page.getContent())
+                        .pageNumber(page.getNumber())
+                        .pageSize(page.getSize())
+                        .totalElements(page.getTotalElements())
+                        .totalPages(page.getTotalPages())
+                        .last(page.isLast())
+                        .build())
+                .build());
+    }
+
+    @GetMapping("/picker/states")
+    @Operation(
+            summary = "List distinct user address states",
+            description = "Distinct non-blank addressState values for users in the given country."
+    )
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<List<String>>> listPickerStates(
+            @RequestParam("country") String country) {
+        return ResponseEntity.ok(ApiResponse.<List<String>>builder()
+                .success(true)
+                .message("States retrieved successfully")
+                .data(userService.listPickerStates(country))
+                .build());
+    }
+
+    @GetMapping("/picker/cities")
+    @Operation(
+            summary = "List distinct user address cities",
+            description = "Distinct non-blank city values for users in the given country (optional state)."
+    )
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MOSQUE_ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<List<String>>> listPickerCities(
+            @RequestParam("country") String country,
+            @RequestParam(value = "state", required = false) String state) {
+        return ResponseEntity.ok(ApiResponse.<List<String>>builder()
+                .success(true)
+                .message("Cities retrieved successfully")
+                .data(userService.listPickerCities(country, state))
+                .build());
+    }
+
     @GetMapping("/{id}")
     @Operation(
             summary = "Get user by ID",
@@ -153,14 +230,14 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .success(true)
                 .message("Profile updated successfully")
-                .data(userService.update(userId, request))
+                .data(userService.update(userId, userId, request))
                 .build());
     }
 
     @PutMapping("/{id}")
     @Operation(
             summary = "Admin update user",
-            description = "Allows a SUPER_ADMIN to update any user's profile by specifying the user UUID."
+            description = "Allows SUPER_ADMIN or MOSQUE_ADMIN (for users linked to their mosque) to update a user profile."
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User updated successfully"),
@@ -169,14 +246,16 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
     })
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','MOSQUE_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> update(
+            Authentication authentication,
             @Parameter(description = "User UUID", required = true) @PathVariable UUID id,
             @Valid @RequestBody UserUpdateRequest request) {
+        UUID callerId = (UUID) authentication.getPrincipal();
         return ResponseEntity.ok(ApiResponse.<UserResponse>builder()
                 .success(true)
                 .message("User updated successfully")
-                .data(userService.update(id, request))
+                .data(userService.update(callerId, id, request))
                 .build());
     }
 

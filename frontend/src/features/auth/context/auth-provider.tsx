@@ -10,6 +10,7 @@ import {
 import {
   changePassword as changePasswordApi,
   login as loginApi,
+  logout as logoutApi,
   refresh as refreshApi,
   register as registerApi,
 } from "../api/auth-api.ts";
@@ -164,10 +165,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [refreshSession]);
 
   const logout = useCallback(() => {
-    clearRefreshTimer();
-    clearSession();
-    setUser(null);
-    accessExpiresAtRef.current = null;
+    void logoutApi()
+      .catch(() => {})
+      .finally(() => {
+        clearRefreshTimer();
+        clearSession();
+        setUser(null);
+        accessExpiresAtRef.current = null;
+      });
   }, [clearRefreshTimer]);
 
   const login = useCallback(

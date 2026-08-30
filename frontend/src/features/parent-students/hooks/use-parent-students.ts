@@ -34,8 +34,13 @@ export function useCreateParentStudent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: ParentStudentCreateRequest) =>
-      parentStudentsApi.create(body),
+    mutationFn: ({
+      body,
+      auditReason,
+    }: {
+      body: ParentStudentCreateRequest;
+      auditReason?: string;
+    }) => parentStudentsApi.create(body, auditReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: parentStudentKeys.lists(),
@@ -51,10 +56,12 @@ export function useUpdateParentStudent() {
     mutationFn: ({
       id,
       body,
+      auditReason,
     }: {
       id: string;
       body: ParentStudentUpdateRequest;
-    }) => parentStudentsApi.update(id, body),
+      auditReason?: string;
+    }) => parentStudentsApi.update(id, body, auditReason),
     onSuccess: (_data, { id }) => {
       void queryClient.invalidateQueries({
         queryKey: parentStudentKeys.lists(),
@@ -70,7 +77,13 @@ export function useDeleteParentStudent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => parentStudentsApi.delete(id),
+    mutationFn: ({
+      id,
+      auditReason,
+    }: {
+      id: string;
+      auditReason?: string;
+    }) => parentStudentsApi.delete(id, auditReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: parentStudentKeys.lists(),
