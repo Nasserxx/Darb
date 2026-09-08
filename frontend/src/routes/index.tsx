@@ -337,4 +337,7 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+], {
+  // Serve under the deployment base path (Vite sets BASE_URL from "base").
+  basename: import.meta.env.BASE_URL,
+});

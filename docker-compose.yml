@@ -33,5 +33,18 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # "" = same origin (frontend nginx proxies /api/ to the backend service)
+        VITE_API_URL: ${VITE_API_URL:-}
+        # Base path the SPA is served under ("/" for root deployments)
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+
 volumes:
   pgdata:

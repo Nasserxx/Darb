@@ -12,6 +12,8 @@ Thumbs.db
 .env.local
 .env.*.local
 !.env.example
+# Local compose overrides (ports, build network, ...)
+docker-compose.override.yml
 
 # --- Cursor ---
 .cursor/
